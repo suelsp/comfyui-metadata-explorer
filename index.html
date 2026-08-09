@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>ComfyUI Metadata Explorer</title>
+
+  <meta
+    name="description"
+    content="Private, client-side ComfyUI image metadata and workflow inspector."
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- =========================================================
+         HEADER
+    ========================================================== -->
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">◈</div>
+
+        <div>
+          <div class="brand-title">
+            ComfyUI Metadata Explorer
+          </div>
+
+          <div class="brand-subtitle">
+            Local-first workflow & metadata inspector
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="privacy-badge">
+          <span class="privacy-dot"></span>
+          Local only
+        </span>
+
+        <button
+          id="clearBtn"
+          class="button button-secondary"
+          type="button"
+        >
+          Clear
+        </button>
+      </div>
+    </header>
+
+
+    <!-- =========================================================
+         MAIN
+    ========================================================== -->
+
+    <main>
+
+      <!-- DROP AREA -->
+
+      <section
+        id="dropZone"
+        class="drop-zone"
+        tabindex="0"
+        aria-label="Drop a ComfyUI image here"
+      >
+
+        <input
+          id="fileInput"
+          type="file"
+          accept=".png,.webp,image/png,image/webp"
+          hidden
+        />
+
+        <div class="drop-icon">
+          ⇩
+        </div>
+
+        <h1>
+          Drop a ComfyUI image here
+        </h1>
+
+        <p>
+          PNG or WebP files are processed entirely in your browser.
+        </p>
+
+        <button
+          id="chooseFileBtn"
+          class="button button-primary"
+          type="button"
+        >
+          Choose image
+        </button>
+
+        <div class="drop-help">
+          Nothing is uploaded.
+        </div>
+
+      </section>
+
+
+      <!-- ERROR -->
+
+      <div
+        id="errorBox"
+        class="error-box hidden"
+        role="alert"
+      >
+        <strong>Error</strong>
+        <span id="errorText"></span>
+      </div>
+
+
+      <!-- =======================================================
+           FILE INFO
+      ======================================================== -->
+
+      <section
+        id="fileInfo"
+        class="file-info hidden"
+      >
+
+        <div class="file-preview-wrap">
+
+          <img
+            id="imagePreview"
+            class="image-preview"
+            alt="Loaded image"
+          />
+
+        </div>
+
+        <div class="file-details">
+
+          <div class="file-title-row">
+            <h2 id="fileName">
+              Image
+            </h2>
+
+            <span
+              id="formatBadge"
+              class="badge"
+            >
+              PNG
+            </span>
+          </div>
+
+          <div class="file-stat-grid">
+
+            <div class="stat">
+              <span class="stat-label">
+                Size
+              </span>
+
+              <span
+                id="fileSize"
+                class="stat-value"
+              >
+                —
+              </span>
+            </div>
+
+            <div class="stat">
+              <span class="stat-label">
+                Dimensions
+              </span>
+
+              <span
+                id="dimensions"
+                class="stat-value"
+              >
+                —
+              </span>
+            </div>
+
+            <div class="stat">
+              <span class="stat-label">
+                Metadata chunks
+              </span>
+
+              <span
+                id="chunkCount"
+                class="stat-value"
+              >
+                —
+              </span>
+            </div>
+
+            <div class="stat">
+              <span class="stat-label">
+                ComfyUI
+              </span>
+
+              <span
+                id="comfyStatus"
+                class="stat-value"
+              >
+                —
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- =======================================================
+           TOOLBAR
+      ======================================================== -->
+
+      <section
+        id="toolbar"
+        class="toolbar hidden"
+      >
+
+        <div class="tabs">
+
+          <button
+            class="tab active"
+            data-tab="summary"
+            type="button"
+          >
+            Summary
+          </button>
+
+          <button
+            class="tab"
+            data-tab="image"
+            type="button"
+          >
+            Image
+          </button>
+
+          <button
+            class="tab"
+            data-tab="prompt"
+            type="button"
+          >
+            Prompt JSON
+          </button>
+
+          <button
+            class="tab"
+            data-tab="workflow"
+            type="button"
+          >
+            Workflow JSON
+          </button>
+
+          <button
+            class="tab"
+            data-tab="nodes"
+            type="button"
+          >
+            Nodes
+          </button>
+
+          <button
+            class="tab"
+            data-tab="chunks"
+            type="button"
+          >
+            Raw Metadata
+          </button>
+
+        </div>
+
+        <div class="toolbar-actions">
+
+          <button
+            id="exportPromptBtn"
+            class="button button-secondary"
+            type="button"
+          >
+            Export Prompt
+          </button>
+
+          <button
+            id="exportWorkflowBtn"
+            class="button button-secondary"
+            type="button"
+          >
+            Export Workflow
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <!-- =======================================================
+           CONTENT
+      ======================================================== -->
+
+      <section
+        id="content"
+        class="content hidden"
+      >
+
+        <!-- SUMMARY -->
+
+        <div
+          id="panel-summary"
+          class="panel active"
+        >
+
+          <div class="panel-heading">
+            <div>
+              <h2>Workflow Overview</h2>
+              <p>
+                Extracted information from the embedded ComfyUI data.
+              </p>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+
+            <div class="summary-card">
+              <div class="summary-card-icon">◎</div>
+
+              <div>
+                <div class="summary-card-label">
+                  Positive Prompt
+                </div>
+
+                <div
+                  id="positivePrompt"
+                  class="summary-card-value prompt-preview"
+                >
+                  —
+                </div>
+              </div>
+            </div>
+
+
+            <div class="summary-card">
+              <div class="summary-card-icon">⊖</div>
+
+              <div>
+                <div class="summary-card-label">
+                  Negative Prompt
+                </div>
+
+                <div
+                  id="negativePrompt"
+                  class="summary-card-value prompt-preview"
+                >
+                  —
+                </div>
+              </div>
+            </div>
+
+
+            <div class="summary-card">
+              <div class="summary-card-icon">◆</div>
+
+              <div>
+                <div class="summary-card-label">
+                  Models
+                </div>
+
+                <div
+                  id="modelSummary"
+                  class="summary-card-value"
+                >
+                  —
+                </div>
+              </div>
+            </div>
+
+
+            <div class="summary-card">
+              <div class="summary-card-icon">◇</div>
+
+              <div>
+                <div class="summary-card-label">
+                  Nodes
+                </div>
+
+                <div
+                  id="nodeSummary"
+                  class="summary-card-value"
+                >
+                  —
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+
+          <div class="section-block">
+
+            <div class="section-heading">
+              <h3>Generation Parameters</h3>
+            </div>
+
+            <div
+              id="parametersGrid"
+              class="parameters-grid"
+            >
+              <!-- generated -->
+            </div>
+
+          </div>
+
+
+          <div class="section-block">
+
+            <div class="section-heading">
+              <h3>Detected Metadata</h3>
+            </div>
+
+            <div
+              id="metadataTable"
+              class="metadata-table"
+            >
+              <!-- generated -->
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- IMAGE -->
+
+        <div
+          id="panel-image"
+          class="panel"
+        >
+
+          <div class="panel-heading">
+            <div>
+              <h2>Image</h2>
+              <p>
+                Original image loaded directly from your device.
+              </p>
+            </div>
+          </div>
+
+          <div class="large-image-container">
+
+            <img
+              id="largeImage"
+              alt="Original image"
+            />
+
+          </div>
+
+        </div>
+
+
+        <!-- PROMPT JSON -->
+
+        <div
+          id="panel-prompt"
+          class="panel"
+        >
+
+          <div class="panel-heading">
+            <div>
+              <h2>Prompt JSON</h2>
+              <p>
+                ComfyUI execution/API prompt data.
+              </p>
+            </div>
+
+            <div class="panel-actions">
+
+              <button
+                id="copyPromptBtn"
+                class="button button-secondary"
+                type="button"
+              >
+                Copy
+              </button>
+
+              <button
+                id="downloadPromptBtn"
+                class="button button-secondary"
+                type="button"
+              >
+                Download
+              </button>
+
+            </div>
+          </div>
+
+          <div class="search-row">
+
+            <input
+              id="promptSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search prompt JSON..."
+            />
+
+          </div>
+
+          <pre
+            id="promptJson"
+            class="json-viewer"
+          ></pre>
+
+        </div>
+
+
+        <!-- WORKFLOW JSON -->
+
+        <div
+          id="panel-workflow"
+          class="panel"
+        >
+
+          <div class="panel-heading">
+
+            <div>
+              <h2>Workflow JSON</h2>
+              <p>
+                Original visual ComfyUI workflow data.
+              </p>
+            </div>
+
+            <div class="panel-actions">
+
+              <button
+                id="copyWorkflowBtn"
+                class="button button-secondary"
+                type="button"
+              >
+                Copy
+              </button>
+
+              <button
+                id="downloadWorkflowBtn"
+                class="button button-secondary"
+                type="button"
+              >
+                Download
+              </button>
+
+            </div>
+
+          </div>
+
+          <div class="search-row">
+
+            <input
+              id="workflowSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search workflow JSON..."
+            />
+
+          </div>
+
+          <pre
+            id="workflowJson"
+            class="json-viewer"
+          ></pre>
+
+        </div>
+
+
+        <!-- NODES -->
+
+        <div
+          id="panel-nodes"
+          class="panel"
+        >
+
+          <div class="panel-heading">
+
+            <div>
+              <h2>Nodes</h2>
+              <p>
+                Detected nodes in the embedded workflow.
+              </p>
+            </div>
+
+          </div>
+
+          <div class="search-row">
+
+            <input
+              id="nodeSearch"
+              class="search-input"
+              type="search"
+              placeholder="Search nodes..."
+            />
+
+          </div>
+
+          <div
+            id="nodesList"
+            class="nodes-list"
+          >
+            <!-- generated -->
+          </div>
+
+        </div>
+
+
+        <!-- RAW CHUNKS -->
+
+        <div
+          id="panel-chunks"
+          class="panel"
+        >
+
+          <div class="panel-heading">
+
+            <div>
+              <h2>Raw Metadata</h2>
+              <p>
+                Every metadata chunk found in the file.
+              </p>
+            </div>
+
+          </div>
+
+          <div
+            id="chunksList"
+            class="chunks-list"
+          >
+            <!-- generated -->
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+
+    <!-- =========================================================
+         FOOTER
+    ========================================================== -->
+
+    <footer class="footer">
+
+      <span>
+        ComfyUI Metadata Explorer
+      </span>
+
+      <span>
+        All processing happens locally in your browser.
+      </span>
+
+    </footer>
+
+  </div>
+
+
+  <!-- TOAST -->
+
+  <div
+    id="toast"
+    class="toast"
+    aria-live="polite"
+  >
+    Copied
+  </div>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>
