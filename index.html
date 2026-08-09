@@ -1,678 +1,1880 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0e14">
+<meta name="description" content="Private local ComfyUI metadata and workflow viewer">
+<title>ComfyUI Metadata Viewer</title>
 
-  <title>ComfyUI Metadata Explorer</title>
+<style>
+:root{
+  --bg:#090c12;
+  --panel:#10151e;
+  --panel2:#171e29;
+  --panel3:#1d2633;
+  --border:#293444;
+  --text:#e6edf5;
+  --muted:#8b98a9;
+  --blue:#5ea7ff;
+  --purple:#a78bfa;
+  --green:#46d369;
+  --yellow:#e5b94c;
+  --red:#ff6673;
+  --shadow:0 16px 45px rgba(0,0,0,.28);
+}
 
-  <meta
-    name="description"
-    content="Private, client-side ComfyUI image metadata and workflow inspector."
-  />
+*{box-sizing:border-box}
 
-  <link rel="stylesheet" href="styles.css" />
+html,body{
+  margin:0;
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:
+    Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",
+    Roboto,Helvetica,Arial,sans-serif;
+}
+
+button,input,textarea{
+  font:inherit;
+}
+
+button{
+  color:var(--text);
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 13px;
+  cursor:pointer;
+}
+
+button:hover{
+  border-color:var(--blue);
+  background:var(--panel3);
+}
+
+button.primary{
+  background:#236fd1;
+  border-color:#236fd1;
+  color:white;
+}
+
+button.primary:hover{
+  background:#3385ec;
+}
+
+button.danger:hover{
+  border-color:var(--red);
+  color:#fff;
+}
+
+.wrap{
+  width:min(1200px,calc(100% - 32px));
+  margin:auto;
+  padding:30px 0 70px;
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  align-items:flex-start;
+}
+
+.brand h1{
+  margin:0;
+  font-size:clamp(1.5rem,3vw,2rem);
+  letter-spacing:-.5px;
+  background:linear-gradient(90deg,var(--blue),var(--purple));
+  color:transparent;
+  background-clip:text;
+  -webkit-background-clip:text;
+}
+
+.brand p{
+  color:var(--muted);
+  margin:5px 0 0;
+}
+
+.privacy{
+  color:var(--green);
+  border:1px solid #46d36944;
+  background:#46d3690e;
+  border-radius:999px;
+  padding:5px 12px;
+  white-space:nowrap;
+  font-size:.8rem;
+}
+
+#drop{
+  margin-top:25px;
+  border:2px dashed var(--border);
+  border-radius:14px;
+  padding:48px 20px;
+  text-align:center;
+  transition:.15s;
+  cursor:pointer;
+  background:linear-gradient(180deg,#10151e,#0d1118);
+}
+
+#drop:hover,
+#drop.drag{
+  border-color:var(--blue);
+  background:#5ea7ff0b;
+}
+
+#drop .icon{
+  font-size:2.4rem;
+}
+
+#drop strong{
+  display:block;
+  margin-top:10px;
+  font-size:1.1rem;
+}
+
+#drop span{
+  display:block;
+  margin-top:5px;
+  color:var(--muted);
+  font-size:.85rem;
+}
+
+#file{
+  display:none;
+}
+
+.paste{
+  margin-top:12px;
+}
+
+textarea{
+  width:100%;
+  min-height:90px;
+  resize:vertical;
+  background:var(--panel);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:12px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:.82rem;
+}
+
+.paste-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+
+#error{
+  display:none;
+  margin-top:15px;
+  padding:12px 15px;
+  color:#ff8992;
+  background:#ff66730d;
+  border:1px solid #ff667344;
+  border-radius:9px;
+}
+
+#app{
+  display:none;
+  margin-top:25px;
+}
+
+.toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.toolbar .file-name{
+  margin-left:auto;
+  color:var(--muted);
+  font-family:ui-monospace,monospace;
+  font-size:.8rem;
+}
+
+.tabs{
+  display:flex;
+  gap:5px;
+  overflow:auto;
+  border-bottom:1px solid var(--border);
+  margin-bottom:14px;
+}
+
+.tab{
+  border:0;
+  border-bottom:2px solid transparent;
+  border-radius:0;
+  background:transparent;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+.tab.active{
+  color:var(--text);
+  border-bottom-color:var(--blue);
+}
+
+.tab-content{
+  display:none;
+}
+
+.tab-content.active{
+  display:block;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:11px;
+  padding:16px;
+  min-width:0;
+}
+
+.card.full{
+  grid-column:1/-1;
+}
+
+.card h2{
+  font-size:.95rem;
+  margin:0 0 12px;
+  color:var(--blue);
+}
+
+.kv{
+  display:grid;
+  grid-template-columns:170px 1fr;
+  border-top:1px solid var(--border);
+}
+
+.kv div{
+  padding:7px 0;
+  border-bottom:1px solid var(--border);
+}
+
+.kv .k{
+  color:var(--muted);
+}
+
+pre{
+  background:#080b10;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:13px;
+  overflow:auto;
+  max-height:620px;
+  font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+
+.prompt{
+  background:#0b1017;
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:13px;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:.88rem;
+  line-height:1.65;
+}
+
+.positive{
+  border-left:3px solid var(--green);
+}
+
+.negative{
+  border-left:3px solid var(--red);
+}
+
+.image-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:200px;
+  background:#07090d;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.image-wrap img{
+  max-width:100%;
+  max-height:700px;
+  object-fit:contain;
+}
+
+.search{
+  width:100%;
+  margin-bottom:10px;
+}
+
+.node-list{
+  display:grid;
+  gap:8px;
+}
+
+.node{
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:11px;
+}
+
+.node-head{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.node-id{
+  color:var(--muted);
+  font:11px ui-monospace,monospace;
+}
+
+.node-type{
+  font-weight:600;
+}
+
+.custom{
+  color:var(--yellow);
+  font-size:.72rem;
+  border:1px solid #e5b94c55;
+  background:#e5b94c0d;
+  padding:2px 7px;
+  border-radius:999px;
+}
+
+.node-values{
+  margin-top:7px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px;
+}
+
+.value{
+  padding:6px 8px;
+  background:#0b1017;
+  border-radius:6px;
+  font:11px ui-monospace,monospace;
+  overflow:hidden;
+}
+
+.value b{
+  color:var(--muted);
+  margin-right:5px;
+}
+
+.raw-tabs{
+  display:flex;
+  gap:6px;
+  margin-bottom:8px;
+}
+
+.status{
+  margin-left:auto;
+  font-size:.78rem;
+  color:var(--muted);
+}
+
+.badge{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:.72rem;
+  border:1px solid var(--border);
+  background:var(--panel2);
+}
+
+.badge.good{
+  color:var(--green);
+  border-color:#46d36955;
+}
+
+.badge.warn{
+  color:var(--yellow);
+  border-color:#e5b94c55;
+}
+
+footer{
+  text-align:center;
+  color:var(--muted);
+  margin-top:45px;
+  font-size:.78rem;
+}
+
+@media(max-width:750px){
+  .grid{grid-template-columns:1fr}
+  .card.full{grid-column:auto}
+  .kv{grid-template-columns:120px 1fr}
+  .node-values{grid-template-columns:1fr}
+  header{flex-direction:column}
+  .privacy{white-space:normal}
+  .toolbar .file-name{
+    width:100%;
+    margin-left:0;
+  }
+}
+</style>
 </head>
 
 <body>
-  <div class="app">
-
-    <!-- =========================================================
-         HEADER
-    ========================================================== -->
-
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">◈</div>
-
-        <div>
-          <div class="brand-title">
-            ComfyUI Metadata Explorer
-          </div>
-
-          <div class="brand-subtitle">
-            Local-first workflow & metadata inspector
-          </div>
-        </div>
-      </div>
-
-      <div class="topbar-actions">
-        <span class="privacy-badge">
-          <span class="privacy-dot"></span>
-          Local only
-        </span>
-
-        <button
-          id="clearBtn"
-          class="button button-secondary"
-          type="button"
-        >
-          Clear
-        </button>
-      </div>
-    </header>
-
-
-    <!-- =========================================================
-         MAIN
-    ========================================================== -->
-
-    <main>
-
-      <!-- DROP AREA -->
-
-      <section
-        id="dropZone"
-        class="drop-zone"
-        tabindex="0"
-        aria-label="Drop a ComfyUI image here"
-      >
-
-        <input
-          id="fileInput"
-          type="file"
-          accept=".png,.webp,image/png,image/webp"
-          hidden
-        />
-
-        <div class="drop-icon">
-          ⇩
-        </div>
-
-        <h1>
-          Drop a ComfyUI image here
-        </h1>
-
-        <p>
-          PNG or WebP files are processed entirely in your browser.
-        </p>
-
-        <button
-          id="chooseFileBtn"
-          class="button button-primary"
-          type="button"
-        >
-          Choose image
-        </button>
-
-        <div class="drop-help">
-          Nothing is uploaded.
-        </div>
-
-      </section>
-
-
-      <!-- ERROR -->
-
-      <div
-        id="errorBox"
-        class="error-box hidden"
-        role="alert"
-      >
-        <strong>Error</strong>
-        <span id="errorText"></span>
-      </div>
-
-
-      <!-- =======================================================
-           FILE INFO
-      ======================================================== -->
-
-      <section
-        id="fileInfo"
-        class="file-info hidden"
-      >
-
-        <div class="file-preview-wrap">
-
-          <img
-            id="imagePreview"
-            class="image-preview"
-            alt="Loaded image"
-          />
-
-        </div>
-
-        <div class="file-details">
-
-          <div class="file-title-row">
-            <h2 id="fileName">
-              Image
-            </h2>
-
-            <span
-              id="formatBadge"
-              class="badge"
-            >
-              PNG
-            </span>
-          </div>
-
-          <div class="file-stat-grid">
-
-            <div class="stat">
-              <span class="stat-label">
-                Size
-              </span>
-
-              <span
-                id="fileSize"
-                class="stat-value"
-              >
-                —
-              </span>
-            </div>
-
-            <div class="stat">
-              <span class="stat-label">
-                Dimensions
-              </span>
-
-              <span
-                id="dimensions"
-                class="stat-value"
-              >
-                —
-              </span>
-            </div>
-
-            <div class="stat">
-              <span class="stat-label">
-                Metadata chunks
-              </span>
-
-              <span
-                id="chunkCount"
-                class="stat-value"
-              >
-                —
-              </span>
-            </div>
-
-            <div class="stat">
-              <span class="stat-label">
-                ComfyUI
-              </span>
-
-              <span
-                id="comfyStatus"
-                class="stat-value"
-              >
-                —
-              </span>
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =======================================================
-           TOOLBAR
-      ======================================================== -->
-
-      <section
-        id="toolbar"
-        class="toolbar hidden"
-      >
-
-        <div class="tabs">
-
-          <button
-            class="tab active"
-            data-tab="summary"
-            type="button"
-          >
-            Summary
-          </button>
-
-          <button
-            class="tab"
-            data-tab="image"
-            type="button"
-          >
-            Image
-          </button>
-
-          <button
-            class="tab"
-            data-tab="prompt"
-            type="button"
-          >
-            Prompt JSON
-          </button>
-
-          <button
-            class="tab"
-            data-tab="workflow"
-            type="button"
-          >
-            Workflow JSON
-          </button>
-
-          <button
-            class="tab"
-            data-tab="nodes"
-            type="button"
-          >
-            Nodes
-          </button>
-
-          <button
-            class="tab"
-            data-tab="chunks"
-            type="button"
-          >
-            Raw Metadata
-          </button>
-
-        </div>
-
-        <div class="toolbar-actions">
-
-          <button
-            id="exportPromptBtn"
-            class="button button-secondary"
-            type="button"
-          >
-            Export Prompt
-          </button>
-
-          <button
-            id="exportWorkflowBtn"
-            class="button button-secondary"
-            type="button"
-          >
-            Export Workflow
-          </button>
-
-        </div>
-
-      </section>
-
-
-      <!-- =======================================================
-           CONTENT
-      ======================================================== -->
-
-      <section
-        id="content"
-        class="content hidden"
-      >
-
-        <!-- SUMMARY -->
-
-        <div
-          id="panel-summary"
-          class="panel active"
-        >
-
-          <div class="panel-heading">
-            <div>
-              <h2>Workflow Overview</h2>
-              <p>
-                Extracted information from the embedded ComfyUI data.
-              </p>
-            </div>
-          </div>
-
-          <div class="summary-grid">
-
-            <div class="summary-card">
-              <div class="summary-card-icon">◎</div>
-
-              <div>
-                <div class="summary-card-label">
-                  Positive Prompt
-                </div>
-
-                <div
-                  id="positivePrompt"
-                  class="summary-card-value prompt-preview"
-                >
-                  —
-                </div>
-              </div>
-            </div>
-
-
-            <div class="summary-card">
-              <div class="summary-card-icon">⊖</div>
-
-              <div>
-                <div class="summary-card-label">
-                  Negative Prompt
-                </div>
-
-                <div
-                  id="negativePrompt"
-                  class="summary-card-value prompt-preview"
-                >
-                  —
-                </div>
-              </div>
-            </div>
-
-
-            <div class="summary-card">
-              <div class="summary-card-icon">◆</div>
-
-              <div>
-                <div class="summary-card-label">
-                  Models
-                </div>
-
-                <div
-                  id="modelSummary"
-                  class="summary-card-value"
-                >
-                  —
-                </div>
-              </div>
-            </div>
-
-
-            <div class="summary-card">
-              <div class="summary-card-icon">◇</div>
-
-              <div>
-                <div class="summary-card-label">
-                  Nodes
-                </div>
-
-                <div
-                  id="nodeSummary"
-                  class="summary-card-value"
-                >
-                  —
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-
-          <div class="section-block">
-
-            <div class="section-heading">
-              <h3>Generation Parameters</h3>
-            </div>
-
-            <div
-              id="parametersGrid"
-              class="parameters-grid"
-            >
-              <!-- generated -->
-            </div>
-
-          </div>
-
-
-          <div class="section-block">
-
-            <div class="section-heading">
-              <h3>Detected Metadata</h3>
-            </div>
-
-            <div
-              id="metadataTable"
-              class="metadata-table"
-            >
-              <!-- generated -->
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- IMAGE -->
-
-        <div
-          id="panel-image"
-          class="panel"
-        >
-
-          <div class="panel-heading">
-            <div>
-              <h2>Image</h2>
-              <p>
-                Original image loaded directly from your device.
-              </p>
-            </div>
-          </div>
-
-          <div class="large-image-container">
-
-            <img
-              id="largeImage"
-              alt="Original image"
-            />
-
-          </div>
-
-        </div>
-
-
-        <!-- PROMPT JSON -->
-
-        <div
-          id="panel-prompt"
-          class="panel"
-        >
-
-          <div class="panel-heading">
-            <div>
-              <h2>Prompt JSON</h2>
-              <p>
-                ComfyUI execution/API prompt data.
-              </p>
-            </div>
-
-            <div class="panel-actions">
-
-              <button
-                id="copyPromptBtn"
-                class="button button-secondary"
-                type="button"
-              >
-                Copy
-              </button>
-
-              <button
-                id="downloadPromptBtn"
-                class="button button-secondary"
-                type="button"
-              >
-                Download
-              </button>
-
-            </div>
-          </div>
-
-          <div class="search-row">
-
-            <input
-              id="promptSearch"
-              class="search-input"
-              type="search"
-              placeholder="Search prompt JSON..."
-            />
-
-          </div>
-
-          <pre
-            id="promptJson"
-            class="json-viewer"
-          ></pre>
-
-        </div>
-
-
-        <!-- WORKFLOW JSON -->
-
-        <div
-          id="panel-workflow"
-          class="panel"
-        >
-
-          <div class="panel-heading">
-
-            <div>
-              <h2>Workflow JSON</h2>
-              <p>
-                Original visual ComfyUI workflow data.
-              </p>
-            </div>
-
-            <div class="panel-actions">
-
-              <button
-                id="copyWorkflowBtn"
-                class="button button-secondary"
-                type="button"
-              >
-                Copy
-              </button>
-
-              <button
-                id="downloadWorkflowBtn"
-                class="button button-secondary"
-                type="button"
-              >
-                Download
-              </button>
-
-            </div>
-
-          </div>
-
-          <div class="search-row">
-
-            <input
-              id="workflowSearch"
-              class="search-input"
-              type="search"
-              placeholder="Search workflow JSON..."
-            />
-
-          </div>
-
-          <pre
-            id="workflowJson"
-            class="json-viewer"
-          ></pre>
-
-        </div>
-
-
-        <!-- NODES -->
-
-        <div
-          id="panel-nodes"
-          class="panel"
-        >
-
-          <div class="panel-heading">
-
-            <div>
-              <h2>Nodes</h2>
-              <p>
-                Detected nodes in the embedded workflow.
-              </p>
-            </div>
-
-          </div>
-
-          <div class="search-row">
-
-            <input
-              id="nodeSearch"
-              class="search-input"
-              type="search"
-              placeholder="Search nodes..."
-            />
-
-          </div>
-
-          <div
-            id="nodesList"
-            class="nodes-list"
-          >
-            <!-- generated -->
-          </div>
-
-        </div>
-
-
-        <!-- RAW CHUNKS -->
-
-        <div
-          id="panel-chunks"
-          class="panel"
-        >
-
-          <div class="panel-heading">
-
-            <div>
-              <h2>Raw Metadata</h2>
-              <p>
-                Every metadata chunk found in the file.
-              </p>
-            </div>
-
-          </div>
-
-          <div
-            id="chunksList"
-            class="chunks-list"
-          >
-            <!-- generated -->
-          </div>
-
-        </div>
-
-      </section>
-
-    </main>
-
-
-    <!-- =========================================================
-         FOOTER
-    ========================================================== -->
-
-    <footer class="footer">
-
-      <span>
-        ComfyUI Metadata Explorer
-      </span>
-
-      <span>
-        All processing happens locally in your browser.
-      </span>
-
-    </footer>
-
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <h1>ComfyUI Metadata Viewer</h1>
+    <p>Inspect ComfyUI PNG metadata and workflow JSON completely locally.</p>
+  </div>
+  <div class="privacy">🔒 100% local processing</div>
+</header>
+
+<div id="drop">
+  <div class="icon">🖼️</div>
+  <strong>Drop a ComfyUI PNG or workflow JSON</strong>
+  <span>PNG metadata • UI workflow • API prompt • wrapped workflow JSON</span>
+</div>
+
+<input id="file" type="file" accept=".png,.json,image/png,application/json">
+
+<div class="paste">
+  <textarea id="paste" placeholder="Or paste ComfyUI workflow JSON here…"></textarea>
+  <div class="paste-actions">
+    <button class="primary" id="parsePaste">Read JSON</button>
+    <button id="sample">Load sample</button>
+  </div>
+</div>
+
+<div id="error"></div>
+
+<div id="app">
+
+  <div class="toolbar">
+    <button class="primary" id="exportPrompt">📥 Export Prompt</button>
+    <button id="exportWorkflow">📥 Export Workflow</button>
+    <button id="exportMetadata">📥 Export Metadata</button>
+    <button id="copyCurrent">📋 Copy JSON</button>
+    <span class="status" id="status"></span>
+    <span class="file-name" id="fileName"></span>
   </div>
 
-
-  <!-- TOAST -->
-
-  <div
-    id="toast"
-    class="toast"
-    aria-live="polite"
-  >
-    Copied
+  <div class="tabs">
+    <button class="tab active" data-tab="summary">📊 Summary</button>
+    <button class="tab" data-tab="image">🖼️ Image</button>
+    <button class="tab" data-tab="prompt">⚙️ Prompt JSON</button>
+    <button class="tab" data-tab="workflow">🔄 Workflow JSON</button>
+    <button class="tab" data-tab="nodes">🎛️ Nodes</button>
+    <button class="tab" data-tab="raw">🧾 Raw Metadata</button>
   </div>
 
+  <section id="summary" class="tab-content active">
+    <div class="grid">
 
-  <script src="app.js"></script>
+      <div class="card">
+        <h2>File</h2>
+        <div id="fileInfo"></div>
+      </div>
 
+      <div class="card">
+        <h2>Workflow</h2>
+        <div id="workflowInfo"></div>
+      </div>
+
+      <div class="card full">
+        <h2>Positive Prompt</h2>
+        <div class="prompt positive" id="positive"></div>
+      </div>
+
+      <div class="card full">
+        <h2>Negative Prompt</h2>
+        <div class="prompt negative" id="negative"></div>
+      </div>
+
+      <div class="card">
+        <h2>Model Information</h2>
+        <div id="models"></div>
+      </div>
+
+      <div class="card">
+        <h2>Generation Settings</h2>
+        <div id="settings"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="image" class="tab-content">
+    <div class="card">
+      <div class="image-wrap" id="imageView">
+        <span style="color:var(--muted)">No image loaded.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="prompt" class="tab-content">
+    <div class="card">
+      <input class="search" id="promptSearch" placeholder="🔍 Search prompt JSON…">
+      <pre id="promptJson"></pre>
+    </div>
+  </section>
+
+  <section id="workflow" class="tab-content">
+    <div class="card">
+      <input class="search" id="workflowSearch" placeholder="🔍 Search workflow JSON…">
+      <pre id="workflowJson"></pre>
+    </div>
+  </section>
+
+  <section id="nodes" class="tab-content">
+    <div class="card">
+      <input class="search" id="nodeSearch" placeholder="🔍 Search nodes, types, IDs, values…">
+      <div class="node-list" id="nodeList"></div>
+    </div>
+  </section>
+
+  <section id="raw" class="tab-content">
+    <div class="card">
+      <pre id="rawJson"></pre>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Everything is processed in your browser. No upload, account, server, analytics, or external dependency.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   ComfyUI Metadata Viewer
+   Completely dependency-free.
+   ============================================================ */
+
+const $ = id => document.getElementById(id);
+
+let STATE = {
+  file:null,
+  imageURL:null,
+  rawMetadata:{},
+  prompt:null,
+  workflow:null,
+  normalized:null,
+  currentJSON:null,
+  currentName:"workflow"
+};
+
+/* -------------------------- helpers -------------------------- */
+
+function esc(value){
+  return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
+function pretty(value){
+  return JSON.stringify(value,null,2);
+}
+
+function download(name,text,type="application/json"){
+  const blob = new Blob([text],{type});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  },1000);
+}
+
+async function clipboard(text){
+  await navigator.clipboard.writeText(text);
+  $("status").textContent = "Copied to clipboard";
+  setTimeout(()=>$("status").textContent="",1500);
+}
+
+function error(message){
+  $("error").textContent = message;
+  $("error").style.display = "block";
+}
+
+function clearError(){
+  $("error").style.display = "none";
+}
+
+function sizeText(bytes){
+  if(bytes < 1024) return bytes+" B";
+  if(bytes < 1024**2) return (bytes/1024).toFixed(1)+" KB";
+  return (bytes/1024**2).toFixed(2)+" MB";
+}
+
+function basename(path){
+  return String(path).split(/[\\/]/).pop();
+}
+
+/* ----------------------- JSON detection ----------------------- */
+
+function detectFormat(j){
+  if(!j || typeof j!=="object") return null;
+
+  if(Array.isArray(j.nodes)){
+    return "ui";
+  }
+
+  const values=Object.values(j);
+  if(values.length &&
+     values.every(v=>v && typeof v==="object" && typeof v.class_type==="string")){
+    return "api";
+  }
+
+  return null;
+}
+
+function unwrapJSON(j){
+  if(detectFormat(j)) return j;
+
+  if(j && j.prompt && detectFormat(j.prompt)){
+    return j.prompt;
+  }
+
+  if(j && j.workflow && detectFormat(j.workflow)){
+    return j.workflow;
+  }
+
+  if(j && j.data && detectFormat(j.data)){
+    return j.data;
+  }
+
+  return j;
+}
+
+/* ---------------------- PNG metadata ------------------------- */
+
+function readU32(view,offset){
+  return view.getUint32(offset,false);
+}
+
+function readLatin(bytes){
+  return new TextDecoder("latin1").decode(bytes);
+}
+
+function readUTF8(bytes){
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function inflate(bytes){
+  if(typeof DecompressionStream==="undefined"){
+    throw new Error(
+      "This browser cannot decompress zTXt/iTXt PNG metadata. " +
+      "Use a current Chrome, Edge, Firefox, or Safari."
+    );
+  }
+
+  /* PNG zTXt/iTXt use zlib-wrapped DEFLATE. */
+  const formats=["deflate","deflate-raw"];
+
+  for(const format of formats){
+    try{
+      const ds=new DecompressionStream(format);
+      const stream=new Blob([bytes]).stream().pipeThrough(ds);
+      const buf=await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    }catch(e){}
+  }
+
+  throw new Error("Unable to decompress PNG metadata.");
+}
+
+async function parsePNG(file){
+  const buffer=await file.arrayBuffer();
+  const bytes=new Uint8Array(buffer);
+  const view=new DataView(buffer);
+
+  const signature=[
+    137,80,78,71,13,10,26,10
+  ];
+
+  for(let i=0;i<8;i++){
+    if(bytes[i]!==signature[i]){
+      throw new Error("This file is not a valid PNG.");
+    }
+  }
+
+  let offset=8;
+  const metadata={};
+  let width=null;
+  let height=null;
+
+  while(offset+12<=bytes.length){
+
+    const length=readU32(view,offset);
+    const type=readLatin(bytes.subarray(offset+4,offset+8));
+    const dataStart=offset+8;
+    const dataEnd=dataStart+length;
+
+    if(dataEnd+4>bytes.length) break;
+
+    const data=bytes.subarray(dataStart,dataEnd);
+
+    if(type==="IHDR" && length>=13){
+      width=readU32(view,dataStart);
+      height=readU32(view,dataStart+4);
+    }
+
+    if(type==="tEXt"){
+      const zero=data.indexOf(0);
+
+      if(zero>=0){
+        const key=readLatin(data.subarray(0,zero));
+        const value=readLatin(data.subarray(zero+1));
+        metadata[key]=value;
+      }
+    }
+
+    else if(type==="zTXt"){
+      const zero=data.indexOf(0);
+
+      if(zero>=0 && zero+2<=data.length){
+        const key=readLatin(data.subarray(0,zero));
+        const compression=data[zero+1];
+
+        if(compression===0){
+          try{
+            const inflated=await inflate(data.subarray(zero+2));
+            metadata[key]=readUTF8(inflated);
+          }catch(e){
+            metadata[key]="[compressed metadata could not be decompressed]";
+          }
+        }
+      }
+    }
+
+    else if(type==="iTXt"){
+      /*
+        iTXt:
+        keyword\0
+        compression flag
+        compression method
+        language\0
+        translated keyword\0
+        text
+      */
+
+      let p=0;
+
+      const endKeyword=data.indexOf(0,p);
+      if(endKeyword<0) break;
+
+      const key=readUTF8(data.subarray(p,endKeyword));
+      p=endKeyword+1;
+
+      if(p+2>data.length) break;
+
+      const compressionFlag=data[p++];
+      const compressionMethod=data[p++];
+
+      const langEnd=data.indexOf(0,p);
+      if(langEnd<0) break;
+      p=langEnd+1;
+
+      const translatedEnd=data.indexOf(0,p);
+      if(translatedEnd<0) break;
+      p=translatedEnd+1;
+
+      let textBytes=data.subarray(p);
+
+      if(compressionFlag===1 && compressionMethod===0){
+        try{
+          textBytes=await inflate(textBytes);
+        }catch(e){
+          metadata[key]="[compressed metadata could not be decompressed]";
+          offset=dataEnd+4;
+          continue;
+        }
+      }
+
+      metadata[key]=readUTF8(textBytes);
+    }
+
+    if(type==="IEND") break;
+
+    offset=dataEnd+4;
+  }
+
+  return {
+    metadata,
+    width,
+    height
+  };
+}
+
+/* ----------------------- workflow core ----------------------- */
+
+const WIDGETS={
+  CheckpointLoaderSimple:["ckpt_name"],
+  CheckpointLoader:["ckpt_name"],
+  UNETLoader:["unet_name","weight_dtype"],
+  VAELoader:["vae_name"],
+  LoraLoader:["lora_name","strength_model","strength_clip"],
+  LoraLoaderModelOnly:["lora_name","strength_model"],
+  CLIPLoader:["clip_name","type"],
+  DualCLIPLoader:["clip_name1","clip_name2","type"],
+  TripleCLIPLoader:["clip_name1","clip_name2","clip_name3"],
+  QuadrupleCLIPLoader:["clip_name1","clip_name2","clip_name3","clip_name4"],
+  ControlNetLoader:["control_net_name"],
+  UpscaleModelLoader:["model_name"],
+  StyleModelLoader:["style_model_name"],
+  CLIPVisionLoader:["clip_name"],
+  CLIPTextEncode:["text"],
+  CLIPSetLastLayer:["stop_at_clip_layer"],
+  EmptyLatentImage:["width","height","batch_size"],
+  EmptySD3LatentImage:["width","height","batch_size"],
+  EmptyHunyuanLatentVideo:["width","height","length","batch_size"],
+  EmptyLTXVLatentVideo:["width","height","length","batch_size"],
+  EmptyMochiLatentVideo:["width","height","length","batch_size"],
+  WanImageToVideo:["width","height","length","batch_size"],
+  LTXVImgToVideo:["width","height","length","batch_size","strength"],
+  LTXVScheduler:["steps","max_shift","base_shift","stretch","terminal"],
+  SaveImage:["filename_prefix"],
+  SaveVideo:["filename_prefix","format","codec"],
+  SaveWEBM:["filename_prefix","codec","fps","crf"],
+  KSampler:[
+    "seed","control_after_generate","steps","cfg",
+    "sampler_name","scheduler","denoise"
+  ],
+  KSamplerAdvanced:[
+    "add_noise","noise_seed","control_after_generate","steps",
+    "cfg","sampler_name","scheduler","start_at_step",
+    "end_at_step","return_with_leftover_noise"
+  ],
+  KSamplerSelect:["sampler_name"],
+  BasicScheduler:["scheduler","steps","denoise"],
+  RandomNoise:["noise_seed","control_after_generate"],
+  FluxGuidance:["guidance"],
+  LatentUpscale:["upscale_method","width","height","crop"],
+  LatentUpscaleBy:["upscale_method","scale_by"],
+  ImageScale:["upscale_method","width","height","crop"],
+  ImageScaleBy:["upscale_method","scale_by"],
+  ControlNetApply:["strength"],
+  ControlNetApplyAdvanced:["strength","start_percent","end_percent"],
+  LoadImage:["image","upload"],
+  Note:["text"],
+  MarkdownNote:["text"]
+};
+
+const CORE=new Set([
+  "KSampler","KSamplerAdvanced","SamplerCustom","SamplerCustomAdvanced",
+  "CheckpointLoaderSimple","CheckpointLoader","UNETLoader","VAELoader",
+  "LoraLoader","LoraLoaderModelOnly","CLIPLoader","DualCLIPLoader",
+  "TripleCLIPLoader","QuadrupleCLIPLoader","ControlNetLoader",
+  "UpscaleModelLoader","StyleModelLoader","CLIPVisionLoader",
+  "CLIPTextEncode","CLIPTextEncodeSDXL","CLIPTextEncodeSDXLRefiner",
+  "CLIPSetLastLayer","ConditioningCombine","ConditioningAverage",
+  "ConditioningConcat","ConditioningSetArea","ConditioningSetMask",
+  "ControlNetApply","ControlNetApplyAdvanced","ControlNetApplySD3",
+  "StyleModelApply","CLIPVisionEncode","FluxGuidance",
+  "EmptyLatentImage","EmptySD3LatentImage","EmptyLatentAudio",
+  "EmptyMochiLatentVideo","EmptyHunyuanLatentVideo",
+  "EmptyLTXVLatentVideo","LatentUpscale","LatentUpscaleBy",
+  "LatentComposite","VAEDecode","VAEEncode","VAEDecodeTiled",
+  "VAEEncodeTiled","SaveImage","PreviewImage","LoadImage",
+  "LoadImageMask","ImageScale","ImageScaleBy","ImageInvert",
+  "ImageBatch","ImagePadForOutpaint","ImageCompositeMasked",
+  "ImageCrop","ImageBlend","ImageBlur","ImageQuantize",
+  "ImageSharpen","ImageScaleToTotalPixels","ImageUpscaleWithModel",
+  "SaveAnimatedWEBP","SaveAnimatedPNG","SaveWEBM","SaveVideo",
+  "MaskToImage","ImageToMask","SolidMask","InvertMask","CropMask",
+  "MaskComposite","FeatherMask","GrowMask","BasicScheduler",
+  "KarrasScheduler","ExponentialScheduler","SDTurboScheduler",
+  "RandomNoise","DisableNoise","BasicGuider","CFGGuider",
+  "ModelSamplingDiscrete","ModelSamplingContinuousEDM",
+  "ModelSamplingContinuousV","RescaleCFG","ModelMergeSimple",
+  "ModelMergeBlocks","ModelMergeSubtract","ModelMergeAdd",
+  "CheckpointSave","CLIPMergeSimple","CLIPSave","VAESave",
+  "LoadLatent","SaveLatent","Note","MarkdownNote","PrimitiveNode",
+  "PrimitiveInt","PrimitiveFloat","PrimitiveString","Reroute",
+  "GetImageSize","CreateVideo","GetVideoComponents"
+]);
+
+const PACK_EXACT={
+  UltimateSDUpscale:"ComfyUI_UltimateSDUpscale",
+  FaceDetailer:"ComfyUI-Impact-Pack",
+  FaceDetailerPipe:"ComfyUI-Impact-Pack",
+  SAMLoader:"ComfyUI-Impact-Pack",
+  DetailerForEach:"ComfyUI-Impact-Pack",
+  UltralyticsDetectorProvider:"ComfyUI-Impact-Subpack",
+  IPAdapter:"ComfyUI_IPAdapter_plus",
+  IPAdapterAdvanced:"ComfyUI_IPAdapter_plus",
+  IPAdapterUnifiedLoader:"ComfyUI_IPAdapter_plus",
+  ReActorFaceSwap:"comfyui-reactor-node",
+  DWPreprocessor:"comfyui_controlnet_aux",
+  AIO_Preprocessor:"comfyui_controlnet_aux",
+  OpenposePreprocessor:"comfyui_controlnet_aux",
+  LineArtPreprocessor:"comfyui_controlnet_aux",
+  DepthAnythingPreprocessor:"comfyui_controlnet_aux",
+  SUPIR_Upscale:"ComfyUI-SUPIR",
+  "RIFE VFI":"ComfyUI-Frame-Interpolation",
+  UnetLoaderGGUF:"ComfyUI-GGUF",
+  DualCLIPLoaderGGUF:"ComfyUI-GGUF",
+  CLIPLoaderGGUF:"ComfyUI-GGUF"
+};
+
+const PACK_PREFIX=[
+  [/^VHS_/,"ComfyUI-VideoHelperSuite"],
+  [/^ADE_/,"ComfyUI-AnimateDiff-Evolved"],
+  [/^Impact/,"ComfyUI-Impact-Pack"],
+  [/^CR\s/,"ComfyUI_Comfyroll_CustomNodes"],
+  [/^ttN\s?/,"ComfyUI_tinyterraNodes"],
+  [/^easy\s/,"ComfyUI-Easy-Use"],
+  [/\(rgthree\)$/,"rgthree-comfy"],
+  [/KJ$/,"ComfyUI-KJNodes"],
+  [/^WanVideo/,"ComfyUI-WanVideoWrapper"],
+  [/^Inspire/,"ComfyUI-Inspire-Pack"],
+  [/GGUF/i,"ComfyUI-GGUF"]
+];
+
+function packHint(type){
+  if(PACK_EXACT[type]) return PACK_EXACT[type];
+
+  for(const [re,pack] of PACK_PREFIX){
+    if(re.test(type)) return pack;
+  }
+
+  return null;
+}
+
+function normalize(json){
+
+  let j=unwrapJSON(json);
+  const format=detectFormat(j);
+
+  if(!format){
+    throw new Error(
+      "JSON does not appear to be a ComfyUI UI-export or API-format workflow."
+    );
+  }
+
+  const nodes=[];
+
+  if(format==="api"){
+
+    for(const [id,n] of Object.entries(j)){
+
+      if(!n || typeof n!=="object" || !n.class_type) continue;
+
+      const widgets=[];
+      const conns=[];
+
+      for(const [key,value] of Object.entries(n.inputs||{})){
+
+        if(Array.isArray(value) &&
+           value.length===2 &&
+           (typeof value[0]==="string" || typeof value[0]==="number")){
+
+          conns.push({
+            input:key,
+            fromId:String(value[0])
+          });
+
+        }else{
+          widgets.push({
+            name:key,
+            value
+          });
+        }
+      }
+
+      nodes.push({
+        id:String(id),
+        type:n.class_type,
+        title:n._meta?.title || null,
+        widgets,
+        conns
+      });
+    }
+
+  }else{
+
+    const links={};
+
+    for(const l of j.links||[]){
+
+      if(Array.isArray(l) && l.length>=4){
+        links[String(l[0])]=String(l[1]);
+      }
+
+      else if(l && typeof l==="object" && l.id!=null){
+        links[String(l.id)]=String(l.origin_id);
+      }
+    }
+
+    for(const n of j.nodes||[]){
+
+      if(!n || typeof n!=="object") continue;
+
+      const type=n.type||"Unknown";
+      const widgets=[];
+      const values=n.widgets_values;
+
+      if(Array.isArray(values)){
+
+        const names=WIDGETS[type]||[];
+
+        values.forEach((value,index)=>{
+          widgets.push({
+            name:names[index]||`value_${index+1}`,
+            value
+          });
+        });
+
+      }else if(values && typeof values==="object"){
+
+        for(const [name,value] of Object.entries(values)){
+          widgets.push({name,value});
+        }
+      }
+
+      const conns=[];
+
+      for(const input of n.inputs||[]){
+
+        if(input &&
+           input.link!=null &&
+           links[String(input.link)]!=null){
+
+          conns.push({
+            input:input.name||"?",
+            fromId:links[String(input.link)]
+          });
+        }
+      }
+
+      nodes.push({
+        id:String(n.id),
+        type,
+        title:n.title||null,
+        widgets,
+        conns,
+        pack:n.properties?.cnr_id || null
+      });
+    }
+  }
+
+  return {
+    format,
+    original:j,
+    nodes
+  };
+}
+
+/* ------------------------ analysis ---------------------------- */
+
+function getWidget(node,name){
+  return node.widgets.find(x=>x.name===name)?.value;
+}
+
+function nodeDisplay(n){
+  return n.title ? `${n.title} (${n.type})` : n.type;
+}
+
+function traceText(byId,start,visited=new Set()){
+
+  if(visited.has(start) || visited.size>80) return null;
+
+  visited.add(start);
+
+  const n=byId[start];
+  if(!n) return null;
+
+  if(/CLIPTextEncode/i.test(n.type)){
+    const text=getWidget(n,"text");
+
+    if(typeof text==="string"){
+      return {
+        id:n.id,
+        text
+      };
+    }
+  }
+
+  for(const c of n.conns){
+    const found=traceText(byId,c.fromId,visited);
+    if(found) return found;
+  }
+
+  return null;
+}
+
+function analyze(normal){
+
+  const nodes=normal.nodes;
+  const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+
+  const custom={};
+  const assets=[];
+  const seenAssets=new Set();
+
+  for(const n of nodes){
+
+    const pack=
+      n.pack &&
+      n.pack!=="comfy-core"
+      ? n.pack
+      : packHint(n.type);
+
+    if(pack || !CORE.has(n.type)){
+
+      const p=pack || "(unknown custom node pack)";
+
+      if(!custom[p]) custom[p]=new Set();
+
+      custom[p].add(n.type);
+    }
+
+    for(const w of n.widgets){
+
+      if(typeof w.value!=="string") continue;
+
+      const value=w.value;
+
+      const modelKey =
+        /^(ckpt_name|unet_name|lora_name|vae_name|control_net_name|clip_name|clip_name1|clip_name2|clip_name3|style_model_name|model_name)$/.test(w.name) ||
+        /\.(safetensors|ckpt|pt|pth|gguf|sft|onnx|bin)$/i.test(value);
+
+      if(!modelKey) continue;
+
+      const key=w.name+"|"+value;
+
+      if(seenAssets.has(key)) continue;
+
+      seenAssets.add(key);
+
+      let category="Model";
+
+      if(w.name==="ckpt_name") category="Checkpoint";
+      else if(w.name==="unet_name") category="Diffusion Model";
+      else if(w.name==="lora_name") category="LoRA";
+      else if(w.name==="vae_name") category="VAE";
+      else if(/control_net/i.test(w.name)) category="ControlNet";
+      else if(/clip_name/i.test(w.name)) category="CLIP";
+      else if(/upscale/i.test(n.type)) category="Upscaler";
+
+      const notes=[];
+
+      if(w.name==="lora_name"){
+        const sm=getWidget(n,"strength_model");
+        const sc=getWidget(n,"strength_clip");
+
+        if(sm!==undefined){
+          notes.push(
+            "strength "+sm+
+            (sc!==undefined && sc!==sm ? " / clip "+sc:"")
+          );
+        }
+      }
+
+      assets.push({
+        category,
+        file:value,
+        notes,
+        node:nodeDisplay(n)
+      });
+    }
+  }
+
+  const samplers=[];
+
+  for(const n of nodes){
+
+    if(/^KSampler/.test(n.type) ||
+       /SamplerCustom/i.test(n.type)){
+
+      const settings={};
+
+      for(const name of [
+        "seed","noise_seed","steps","cfg",
+        "sampler_name","scheduler","denoise",
+        "start_at_step","end_at_step"
+      ]){
+        const value=getWidget(n,name);
+        if(value!==undefined) settings[name]=value;
+      }
+
+      samplers.push({
+        node:n.id,
+        type:n.type,
+        settings
+      });
+    }
+  }
+
+  const dimensions=[];
+
+  for(const n of nodes){
+
+    const width=getWidget(n,"width");
+    const height=getWidget(n,"height");
+
+    if(width!==undefined && height!==undefined){
+
+      dimensions.push({
+        node:nodeDisplay(n),
+        width,
+        height,
+        batch:getWidget(n,"batch_size"),
+        length:getWidget(n,"length")
+      });
+    }
+  }
+
+  let positive=null;
+  let negative=null;
+
+  for(const n of nodes){
+
+    if(!/^(KSampler|KSamplerAdvanced)$/.test(n.type)) continue;
+
+    const positiveConn=n.conns.find(c=>/positive/i.test(c.input));
+    const negativeConn=n.conns.find(c=>/negative/i.test(c.input));
+
+    if(positiveConn && !positive){
+      positive=traceText(byId,positiveConn.fromId);
+    }
+
+    if(negativeConn && !negative){
+      negative=traceText(byId,negativeConn.fromId);
+    }
+  }
+
+  /* fallback: inspect every text node */
+  if(!positive){
+
+    for(const n of nodes){
+
+      if(/CLIPTextEncode/i.test(n.type)){
+
+        const text=getWidget(n,"text");
+
+        if(typeof text==="string" && text.trim()){
+
+          if(!positive){
+            positive={
+              id:n.id,
+              text
+            };
+          }
+        }
+      }
+    }
+  }
+
+  const outputs=nodes.filter(n=>/save|preview|output|videocombine/i.test(n.type));
+
+  return {
+    byId,
+    custom:Object.entries(custom).map(([pack,set])=>({
+      pack,
+      nodes:[...set].sort()
+    })),
+    assets,
+    samplers,
+    dimensions,
+    positive,
+    negative,
+    outputs
+  };
+}
+
+/* ----------------------- rendering ---------------------------- */
+
+function renderKV(el,data){
+
+  el.innerHTML=`
+    <div class="kv">
+      ${Object.entries(data).map(([k,v])=>`
+        <div class="k">${esc(k)}</div>
+        <div>${esc(typeof v==="object" ? JSON.stringify(v) : v)}</div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function render(){
+
+  $("app").style.display="block";
+
+  const normal=STATE.normalized;
+  const info=STATE.analysis;
+
+  $("fileName").textContent=STATE.currentName;
+
+  renderKV($("fileInfo"),{
+    "Name":STATE.currentName,
+    "Size":STATE.file ? sizeText(STATE.file.size) : "—",
+    "Type":STATE.file?.type || "JSON",
+    "PNG dimensions":
+      STATE.pngInfo?.width
+      ? `${STATE.pngInfo.width} × ${STATE.pngInfo.height}`
+      : "—"
+  });
+
+  renderKV($("workflowInfo"),{
+    "Format":normal.format==="ui" ? "UI Export" : "API Format",
+    "Nodes":normal.nodes.length,
+    "Custom node packs":info.custom.length,
+    "Model references":info.assets.length,
+    "Sampler nodes":info.samplers.length
+  });
+
+  $("positive").textContent=
+    info.positive?.text || "No positive prompt could be traced.";
+
+  $("negative").textContent=
+    info.negative?.text || "No negative prompt could be traced.";
+
+  if(info.assets.length){
+
+    $("models").innerHTML=info.assets.map(a=>`
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+        <span class="badge">${esc(a.category)}</span>
+        <div style="font-family:ui-monospace,monospace;font-size:.82rem;margin-top:4px;word-break:break-word">
+          ${esc(a.file)}
+        </div>
+        ${a.notes.length
+          ? `<div style="color:var(--muted);font-size:.75rem">${esc(a.notes.join(" • "))}</div>`
+          : ""}
+      </div>
+    `).join("");
+
+  }else{
+
+    $("models").innerHTML=
+      `<span style="color:var(--muted)">No obvious model files found.</span>`;
+  }
+
+  const settings={};
+
+  if(info.dimensions.length){
+
+    settings["Resolution"]=
+      [...new Set(info.dimensions.map(x=>`${x.width}×${x.height}`))].join(", ");
+
+  }
+
+  if(info.samplers.length){
+
+    const first=info.samplers[0].settings;
+
+    for(const key of [
+      "steps","cfg","sampler_name","scheduler","denoise",
+      "seed","noise_seed"
+    ]){
+
+      if(first[key]!==undefined){
+        settings[key]=first[key];
+      }
+    }
+  }
+
+  renderKV(
+    $("settings"),
+    Object.keys(settings).length ? settings : {"Information":"No standard settings detected."}
+  );
+
+  $("promptJson").textContent=
+    pretty(STATE.prompt ?? {});
+
+  $("workflowJson").textContent=
+    pretty(STATE.workflow ?? normal.original);
+
+  $("rawJson").textContent=
+    pretty(STATE.rawMetadata);
+
+  renderNodes();
+
+  if(STATE.imageURL){
+
+    $("imageView").innerHTML=
+      `<img src="${STATE.imageURL}" alt="Loaded ComfyUI image">`;
+
+  }else{
+
+    $("imageView").innerHTML=
+      `<span style="color:var(--muted)">No image loaded.</span>`;
+  }
+}
+
+function renderNodes(){
+
+  const query=$("nodeSearch").value.trim().toLowerCase();
+
+  const nodes=STATE.normalized.nodes.filter(n=>{
+
+    if(!query) return true;
+
+    const hay=[
+      n.id,
+      n.type,
+      n.title,
+      ...n.widgets.map(w=>`${w.name} ${w.value}`)
+    ].join(" ").toLowerCase();
+
+    return hay.includes(query);
+  });
+
+  $("nodeList").innerHTML=nodes.map(n=>{
+
+    const custom=
+      !CORE.has(n.type) || n.pack
+      ? `<span class="custom">CUSTOM</span>`
+      : "";
+
+    return `
+      <div class="node">
+        <div class="node-head">
+          <span class="node-id">#${esc(n.id)}</span>
+          <span class="node-type">${esc(n.type)}</span>
+          ${n.title ? `<span class="badge">${esc(n.title)}</span>`:""}
+          ${custom}
+        </div>
+
+        <div class="node-values">
+
+          ${n.widgets.map(w=>`
+            <div class="value">
+              <b>${esc(w.name)}:</b>
+              ${esc(
+                typeof w.value==="object"
+                  ? JSON.stringify(w.value)
+                  : w.value
+              )}
+            </div>
+          `).join("")}
+
+          ${n.conns.map(c=>`
+            <div class="value">
+              <b>${esc(c.input)}:</b>
+              ← node ${esc(c.fromId)}
+            </div>
+          `).join("")}
+
+        </div>
+      </div>
+    `;
+
+  }).join("") ||
+    `<div style="color:var(--muted)">No nodes match.</div>`;
+}
+
+/* ---------------------- input loading ------------------------- */
+
+async function processJSON(json,name="workflow.json",file=null){
+
+  clearError();
+
+  try{
+
+    const normalized=normalize(json);
+    const analysis=analyze(normalized);
+
+    STATE.file=file;
+    STATE.currentName=name;
+    STATE.normalized=normalized;
+    STATE.analysis=analysis;
+    STATE.workflow=
+      normalized.format==="ui"
+        ? json
+        : normalized.original;
+    STATE.prompt=
+      json.prompt ||
+      json?.workflow?.prompt ||
+      (normalized.format==="api" ? normalized.original : null);
+
+    STATE.currentJSON=STATE.workflow;
+    STATE.pngInfo=null;
+
+    render();
+
+  }catch(e){
+
+    error(e.message || String(e));
+  }
+}
+
+async function processPNG(file){
+
+  clearError();
+
+  try{
+
+    const png=await parsePNG(file);
+
+    STATE.file=file;
+    STATE.currentName=file.name;
+    STATE.rawMetadata=png.metadata;
+    STATE.pngInfo={
+      width:png.width,
+      height:png.height
+    };
+
+    STATE.imageURL=URL.createObjectURL(file);
+
+    let prompt=null;
+    let workflow=null;
+
+    /*
+      ComfyUI normally stores:
+      prompt   -> API prompt JSON
+      workflow -> UI workflow JSON
+    */
+
+    for(const [key,value] of Object.entries(png.metadata)){
+
+      if(typeof value!=="string") continue;
+
+      const lower=key.toLowerCase();
+
+      if(lower==="prompt" || lower==="comfy_prompt"){
+
+        try{
+          prompt=JSON.parse(value);
+        }catch(e){}
+      }
+
+      if(lower==="workflow" || lower==="comfy_workflow"){
+
+        try{
+          workflow=JSON.parse(value);
+        }catch(e){}
+      }
+    }
+
+    /*
+      Some PNGs contain JSON under nonstandard metadata fields.
+      Try to locate likely workflow JSON automatically.
+    */
+
+    if(!workflow){
+
+      for(const value of Object.values(png.metadata)){
+
+        if(typeof value!=="string") continue;
+
+        try{
+
+          const j=JSON.parse(value);
+
+          if(detectFormat(j)==="ui"){
+            workflow=j;
+            break;
+          }
+
+        }catch(e){}
+      }
+    }
+
+    if(!prompt){
+
+      for(const value of Object.values(png.metadata)){
+
+        if(typeof value!=="string") continue;
+
+        try{
+
+          const j=JSON.parse(value);
+
+          if(detectFormat(j)==="api"){
+            prompt=j;
+            break;
+          }
+
+        }catch(e){}
+      }
+    }
+
+    if(!prompt && !workflow){
+
+      throw new Error(
+        "The PNG was read successfully, but no ComfyUI workflow/prompt JSON was found in its metadata."
+      );
+    }
+
+    const source=workflow || prompt;
+
+    const normalized=normalize(source);
+    const analysis=analyze(normalized);
+
+    STATE.normalized=normalized;
+    STATE.analysis=analysis;
+    STATE.workflow=workflow;
+    STATE.prompt=prompt;
+    STATE.currentJSON=workflow || prompt;
+
+    render();
+
+  }catch(e){
+
+    error(e.message || String(e));
+  }
+}
+
+/* -------------------------- events ---------------------------- */
+
+$("drop").onclick=()=>$("file").click();
+
+$("drop").ondragover=e=>{
+  e.preventDefault();
+  $("drop").classList.add("drag");
+};
+
+$("drop").ondragleave=()=>{
+  $("drop").classList.remove("drag");
+};
+
+$("drop").ondrop=e=>{
+
+  e.preventDefault();
+  $("drop").classList.remove("drag");
+
+  const file=e.dataTransfer.files[0];
+
+  if(file) loadFile(file);
+};
+
+$("file").onchange=e=>{
+  const file=e.target.files[0];
+  if(file) loadFile(file);
+};
+
+async function loadFile(file){
+
+  const type=file.type.toLowerCase();
+
+  if(
+    type==="image/png" ||
+    file.name.toLowerCase().endsWith(".png")
+  ){
+
+    await processPNG(file);
+    return;
+  }
+
+  if(
+    type==="application/json" ||
+    file.name.toLowerCase().endsWith(".json")
+  ){
+
+    try{
+
+      const text=await file.text();
+      const json=JSON.parse(text);
+
+      STATE.rawMetadata={
+        source:"JSON file",
+        filename:file.name
+      };
+
+      await processJSON(json,file.name,file);
+
+    }catch(e){
+
+      error("Invalid JSON: "+e.message);
+    }
+
+    return;
+  }
+
+  error("Please choose a PNG or JSON file.");
+}
+
+$("parsePaste").onclick=()=>{
+
+  try{
+    processJSON(
+      JSON.parse($("paste").value),
+      "pasted-workflow.json"
+    );
+  }catch(e){
+    error("Invalid JSON: "+e.message);
+  }
+};
+
+$("sample").onclick=()=>{
+
+  const sample={
+    "3":{
+      "class_type":"CheckpointLoaderSimple",
+      "inputs":{
+        "ckpt_name":"example.safetensors"
+      }
+    },
+    "6":{
+      "class_type":"CLIPTextEncode",
+      "inputs":{
+        "text":"masterpiece, cinematic portrait, detailed face",
+        "clip":["3",1]
+      }
+    },
+    "7":{
+      "class_type":"EmptyLatentImage",
+      "inputs":{
+        "width":1024,
+        "height":1024,
+        "batch_size":1
+      }
+    },
+    "8":{
+      "class_type":"KSampler",
+      "inputs":{
+        "seed":123456,
+        "steps":30,
+        "cfg":7,
+        "sampler_name":"euler",
+        "scheduler":"normal",
+        "denoise":1,
+        "model":["3",0],
+        "positive":["6",0],
+        "negative":["6",0],
+        "latent_image":["7",0]
+      }
+    }
+  };
+
+  $("paste").value=pretty(sample);
+  processJSON(sample,"sample-workflow.json");
+};
+
+document.querySelectorAll(".tab").forEach(tab=>{
+
+  tab.onclick=()=>{
+
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(x=>x.classList.remove("active"));
+
+    tab.classList.add("active");
+    $(tab.dataset.tab).classList.add("active");
+  };
+});
+
+$("nodeSearch").oninput=renderNodes;
+
+function filteredJSON(text,query){
+
+  if(!query) return text;
+
+  const lines=text.split("\n");
+  const q=query.toLowerCase();
+
+  return lines.filter(line=>line.toLowerCase().includes(q)).join("\n");
+}
+
+$("promptSearch").oninput=()=>{
+
+  $("promptJson").textContent=
+    filteredJSON(
+      pretty(STATE.prompt ?? {}),
+      $("promptSearch").value
+    );
+};
+
+$("workflowSearch").oninput=()=>{
+
+  $("workflowJson").textContent=
+    filteredJSON(
+      pretty(STATE.workflow ?? STATE.normalized?.original ?? {}),
+      $("workflowSearch").value
+    );
+};
+
+$("exportPrompt").onclick=()=>{
+
+  if(!STATE.prompt){
+    alert("No prompt JSON is available.");
+    return;
+  }
+
+  download(
+    "comfyui-prompt.json",
+    pretty(STATE.prompt)
+  );
+};
+
+$("exportWorkflow").onclick=()=>{
+
+  if(!STATE.workflow){
+
+    /*
+      If only API format exists, exporting that is still useful.
+    */
+
+    if(STATE.normalized){
+
+      download(
+        "comfyui-workflow.json",
+        pretty(STATE.normalized.original)
+      );
+
+      return;
+    }
+
+    alert("No workflow JSON is available.");
+    return;
+  }
+
+  download(
+    "comfyui-workflow.json",
+    pretty(STATE.workflow)
+  );
+};
+
+$("exportMetadata").onclick=()=>{
+
+  download(
+    "comfyui-metadata.json",
+    pretty(STATE.rawMetadata)
+  );
+};
+
+$("copyCurrent").onclick=()=>{
+
+  clipboard(
+    pretty(
+      STATE.currentJSON ??
+      STATE.normalized?.original ??
+      {}
+    )
+  );
+};
+
+/* ------------------------- cleanup ---------------------------- */
+
+window.addEventListener("beforeunload",()=>{
+
+  if(STATE.imageURL){
+    URL.revokeObjectURL(STATE.imageURL);
+  }
+});
+
+</script>
 </body>
 </html>
