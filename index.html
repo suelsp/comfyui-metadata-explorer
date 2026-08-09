@@ -1,836 +1,1133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b0e14">
-<meta name="description" content="Private local ComfyUI metadata and workflow viewer">
-<title>ComfyUI Metadata Viewer</title>
+<meta name="theme-color" content="#08090d">
+<meta name="description" content="Private, local ComfyUI workflow and metadata inspector">
+<title>NodeLens — ComfyUI Inspector</title>
 
 <style>
 :root{
-  --bg:#090c12;
-  --panel:#10151e;
-  --panel2:#171e29;
-  --panel3:#1d2633;
-  --border:#293444;
-  --text:#e6edf5;
-  --muted:#8b98a9;
-  --blue:#5ea7ff;
-  --purple:#a78bfa;
-  --green:#46d369;
-  --yellow:#e5b94c;
-  --red:#ff6673;
-  --shadow:0 16px 45px rgba(0,0,0,.28);
+  --bg:#08090d;
+  --bg2:#0d0f15;
+  --panel:#11141b;
+  --panel2:#171b24;
+  --panel3:#1d222d;
+  --line:#272d39;
+  --line2:#343b49;
+  --text:#f2f4f8;
+  --muted:#8c96a7;
+  --dim:#626b7b;
+  --accent:#8b7cff;
+  --accent2:#5ce1c2;
+  --blue:#65a9ff;
+  --green:#54d89a;
+  --yellow:#f1c76b;
+  --red:#ff687a;
+  --orange:#ff9d61;
+  --shadow:0 30px 80px rgba(0,0,0,.38);
+  --radius:18px;
+  --radius-sm:12px;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
 *{box-sizing:border-box}
-
-html,body{
+html{min-height:100%;background:var(--bg)}
+body{
   margin:0;
-  min-height:100%;
-  background:var(--bg);
+  min-height:100vh;
   color:var(--text);
-  font-family:
-    Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",
-    Roboto,Helvetica,Arial,sans-serif;
+  background:
+    radial-gradient(900px 500px at 15% -10%,rgba(139,124,255,.13),transparent 65%),
+    radial-gradient(800px 500px at 100% 0%,rgba(92,225,194,.06),transparent 65%),
+    var(--bg);
+  font-family:var(--sans);
 }
-
-button,input,textarea{
-  font:inherit;
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
 }
+::selection{background:rgba(139,124,255,.3)}
 
-button{
-  color:var(--text);
-  background:var(--panel2);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:8px 13px;
-  cursor:pointer;
-}
-
-button:hover{
-  border-color:var(--blue);
-  background:var(--panel3);
-}
-
-button.primary{
-  background:#236fd1;
-  border-color:#236fd1;
-  color:white;
-}
-
-button.primary:hover{
-  background:#3385ec;
-}
-
-button.danger:hover{
-  border-color:var(--red);
-  color:#fff;
-}
-
-.wrap{
-  width:min(1200px,calc(100% - 32px));
+.app{
+  width:min(1480px,calc(100% - 36px));
   margin:auto;
-  padding:30px 0 70px;
+  padding:24px 0 60px;
 }
 
-header{
+/* Header */
+.topbar{
   display:flex;
+  align-items:center;
   justify-content:space-between;
   gap:20px;
-  align-items:flex-start;
+  margin-bottom:24px;
 }
-
-.brand h1{
-  margin:0;
-  font-size:clamp(1.5rem,3vw,2rem);
-  letter-spacing:-.5px;
-  background:linear-gradient(90deg,var(--blue),var(--purple));
-  color:transparent;
-  background-clip:text;
-  -webkit-background-clip:text;
-}
-
-.brand p{
-  color:var(--muted);
-  margin:5px 0 0;
-}
-
-.privacy{
-  color:var(--green);
-  border:1px solid #46d36944;
-  background:#46d3690e;
-  border-radius:999px;
-  padding:5px 12px;
-  white-space:nowrap;
-  font-size:.8rem;
-}
-
-#drop{
-  margin-top:25px;
-  border:2px dashed var(--border);
-  border-radius:14px;
-  padding:48px 20px;
-  text-align:center;
-  transition:.15s;
-  cursor:pointer;
-  background:linear-gradient(180deg,#10151e,#0d1118);
-}
-
-#drop:hover,
-#drop.drag{
-  border-color:var(--blue);
-  background:#5ea7ff0b;
-}
-
-#drop .icon{
-  font-size:2.4rem;
-}
-
-#drop strong{
-  display:block;
-  margin-top:10px;
-  font-size:1.1rem;
-}
-
-#drop span{
-  display:block;
-  margin-top:5px;
-  color:var(--muted);
-  font-size:.85rem;
-}
-
-#file{
-  display:none;
-}
-
-.paste{
-  margin-top:12px;
-}
-
-textarea{
-  width:100%;
-  min-height:90px;
-  resize:vertical;
-  background:var(--panel);
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:9px;
-  padding:12px;
-  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
-  font-size:.82rem;
-}
-
-.paste-actions{
+.brand{
   display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-top:8px;
-}
-
-#error{
-  display:none;
-  margin-top:15px;
-  padding:12px 15px;
-  color:#ff8992;
-  background:#ff66730d;
-  border:1px solid #ff667344;
-  border-radius:9px;
-}
-
-#app{
-  display:none;
-  margin-top:25px;
-}
-
-.toolbar{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
   align-items:center;
-  margin-bottom:12px;
+  gap:13px;
 }
-
-.toolbar .file-name{
-  margin-left:auto;
+.logo{
+  width:42px;
+  height:42px;
+  border:1px solid #ffffff16;
+  border-radius:13px;
+  display:grid;
+  place-items:center;
+  background:
+    linear-gradient(145deg,#211d42,#10131b 70%);
+  box-shadow:inset 0 1px #ffffff10,0 10px 35px #0005;
+  position:relative;
+  overflow:hidden;
+}
+.logo:before,.logo:after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  filter:blur(1px);
+}
+.logo:before{
+  width:16px;height:16px;
+  background:var(--accent);
+  left:8px;top:8px;
+  box-shadow:15px 12px 0 var(--accent2);
+}
+.logo:after{
+  width:8px;height:8px;
+  background:#fff;
+  right:7px;top:7px;
+}
+.brand h1{
+  font-size:18px;
+  line-height:1;
+  margin:0;
+  letter-spacing:-.5px;
+}
+.brand p{
+  margin:5px 0 0;
   color:var(--muted);
-  font-family:ui-monospace,monospace;
-  font-size:.8rem;
+  font-size:12px;
 }
-
-.tabs{
+.top-actions{
   display:flex;
-  gap:5px;
-  overflow:auto;
-  border-bottom:1px solid var(--border);
-  margin-bottom:14px;
+  align-items:center;
+  gap:8px;
+}
+.local-pill{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  border:1px solid #54d89a33;
+  color:#78e4ae;
+  background:#54d89a0b;
+  border-radius:999px;
+  padding:7px 11px;
+  font-size:11px;
+  font-weight:650;
+}
+.local-dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 10px var(--green);
 }
 
-.tab{
-  border:0;
-  border-bottom:2px solid transparent;
-  border-radius:0;
-  background:transparent;
-  color:var(--muted);
-  white-space:nowrap;
-}
-
-.tab.active{
+/* Buttons */
+.btn{
+  border:1px solid var(--line);
   color:var(--text);
-  border-bottom-color:var(--blue);
+  background:var(--panel2);
+  border-radius:10px;
+  padding:9px 12px;
+  font-size:12px;
+  font-weight:650;
+  transition:.16s ease;
 }
-
-.tab-content{
-  display:none;
+.btn:hover{
+  background:var(--panel3);
+  border-color:var(--line2);
+  transform:translateY(-1px);
 }
-
-.tab-content.active{
-  display:block;
+.btn.primary{
+  background:linear-gradient(135deg,#8879ff,#6b5cf1);
+  border-color:#9488ff;
+  color:#fff;
+  box-shadow:0 8px 25px #6d5cf126;
 }
-
-.grid{
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger:hover{border-color:#ff687a66;color:#ff9aa7}
+.icon-btn{
+  width:34px;height:34px;
+  padding:0;
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
+  place-items:center;
 }
 
-.card{
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:11px;
-  padding:16px;
-  min-width:0;
+/* Empty state */
+.hero{
+  position:relative;
+  overflow:hidden;
+  min-height:430px;
+  border:1px solid var(--line);
+  border-radius:25px;
+  background:
+    linear-gradient(135deg,rgba(139,124,255,.055),transparent 42%),
+    linear-gradient(180deg,#11141b,#0d1016);
+  box-shadow:var(--shadow);
 }
-
-.card.full{
-  grid-column:1/-1;
+.hero:before{
+  content:"";
+  position:absolute;
+  width:480px;height:480px;
+  border-radius:50%;
+  border:1px solid #ffffff05;
+  right:-150px;top:-240px;
 }
-
-.card h2{
-  font-size:.95rem;
-  margin:0 0 12px;
-  color:var(--blue);
+.hero:after{
+  content:"";
+  position:absolute;
+  width:300px;height:300px;
+  border-radius:50%;
+  border:1px solid #ffffff04;
+  left:-160px;bottom:-180px;
 }
-
-.kv{
+.hero-inner{
+  position:relative;
+  z-index:1;
+  min-height:430px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:50px 25px;
+}
+.dropzone{
+  width:min(720px,100%);
+  text-align:center;
+  border:1px dashed #4b5363;
+  border-radius:22px;
+  padding:55px 28px;
+  background:rgba(7,9,13,.45);
+  transition:.2s ease;
+}
+.dropzone.drag{
+  border-color:var(--accent);
+  background:#8b7cff0b;
+  box-shadow:0 0 0 5px #8b7cff09;
+  transform:scale(1.01);
+}
+.drop-icon{
+  width:72px;height:72px;
+  border-radius:22px;
+  margin:0 auto 21px;
   display:grid;
-  grid-template-columns:170px 1fr;
-  border-top:1px solid var(--border);
+  place-items:center;
+  font-size:28px;
+  background:linear-gradient(145deg,#211d42,#171b25);
+  border:1px solid #8b7cff30;
 }
-
-.kv div{
-  padding:7px 0;
-  border-bottom:1px solid var(--border);
+.dropzone h2{
+  margin:0;
+  font-size:26px;
+  letter-spacing:-.8px;
 }
-
-.kv .k{
+.dropzone p{
+  max-width:520px;
+  margin:10px auto 22px;
   color:var(--muted);
-}
-
-pre{
-  background:#080b10;
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:13px;
-  overflow:auto;
-  max-height:620px;
-  font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.prompt{
-  background:#0b1017;
-  border:1px solid var(--border);
-  border-radius:9px;
-  padding:13px;
-  white-space:pre-wrap;
-  word-break:break-word;
-  font-size:.88rem;
+  font-size:13px;
   line-height:1.65;
 }
-
-.positive{
-  border-left:3px solid var(--green);
-}
-
-.negative{
-  border-left:3px solid var(--red);
-}
-
-.image-wrap{
+.drop-buttons{
   display:flex;
   justify-content:center;
-  align-items:center;
-  min-height:200px;
-  background:#07090d;
-  border-radius:10px;
-  overflow:hidden;
+  gap:8px;
+  flex-wrap:wrap;
 }
-
-.image-wrap img{
-  max-width:100%;
-  max-height:700px;
-  object-fit:contain;
+.supported{
+  margin-top:25px;
+  color:var(--dim);
+  font-size:10px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
 }
+#file{display:none}
 
-.search{
-  width:100%;
-  margin-bottom:10px;
-}
-
-.node-list{
+.paste-panel{
+  margin-top:12px;
   display:grid;
-  gap:8px;
+  grid-template-columns:1fr auto;
+  gap:10px;
 }
-
-.node{
-  background:var(--panel2);
-  border:1px solid var(--border);
-  border-radius:9px;
-  padding:11px;
+.paste-box{
+  min-height:58px;
+  resize:vertical;
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:15px;
+  color:var(--text);
+  background:var(--panel);
+  font:12px/1.5 var(--mono);
 }
-
-.node-head{
+.paste-actions{
   display:flex;
+  flex-direction:column;
   gap:8px;
+}
+
+/* Error */
+#error{
+  display:none;
+  margin:14px 0;
+  padding:13px 15px;
+  border:1px solid #ff687a40;
+  border-radius:12px;
+  background:#ff687a0b;
+  color:#ff9ca8;
+  font-size:12px;
+}
+
+/* Workspace */
+.workspace{display:none}
+.filebar{
+  display:flex;
   align-items:center;
+  gap:12px;
+  padding:13px 0 16px;
+}
+.file-chip{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.file-icon{
+  width:38px;height:38px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  background:var(--panel2);
+  border:1px solid var(--line);
+}
+.file-name{
+  min-width:0;
+  font-size:13px;
+  font-weight:700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.file-meta{
+  color:var(--muted);
+  font:10px var(--mono);
+  margin-top:3px;
+}
+.filebar-actions{
+  margin-left:auto;
+  display:flex;
+  gap:7px;
   flex-wrap:wrap;
 }
 
-.node-id{
+/* Navigation */
+.nav-shell{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  overflow:auto;
+  padding:5px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#0e1117;
+  margin-bottom:15px;
+  scrollbar-width:none;
+}
+.nav-shell::-webkit-scrollbar{display:none}
+.nav-tab{
+  flex:0 0 auto;
+  border:0;
+  border-radius:10px;
+  background:transparent;
   color:var(--muted);
-  font:11px ui-monospace,monospace;
+  padding:9px 13px;
+  font-size:11px;
+  font-weight:700;
+  transition:.15s;
 }
-
-.node-type{
-  font-weight:600;
+.nav-tab:hover{color:var(--text);background:#ffffff06}
+.nav-tab.active{
+  color:#fff;
+  background:var(--panel3);
+  box-shadow:inset 0 0 0 1px #ffffff0a,0 3px 10px #0004;
 }
-
-.custom{
-  color:var(--yellow);
-  font-size:.72rem;
-  border:1px solid #e5b94c55;
-  background:#e5b94c0d;
-  padding:2px 7px;
-  border-radius:999px;
-}
-
-.node-values{
-  margin-top:7px;
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:5px;
-}
-
-.value{
-  padding:6px 8px;
-  background:#0b1017;
-  border-radius:6px;
-  font:11px ui-monospace,monospace;
-  overflow:hidden;
-}
-
-.value b{
-  color:var(--muted);
+.nav-tab span{
+  opacity:.55;
   margin-right:5px;
 }
 
-.raw-tabs{
+/* Dashboard */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+.dashboard{
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:14px;
+}
+.panel{
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:
+    linear-gradient(180deg,#12151c,#10131a);
+  overflow:hidden;
+}
+.panel-head{
   display:flex;
-  gap:6px;
-  margin-bottom:8px;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:17px 18px 13px;
+  border-bottom:1px solid var(--line);
 }
-
-.status{
-  margin-left:auto;
-  font-size:.78rem;
+.panel-title{
+  font-size:12px;
+  font-weight:750;
+  letter-spacing:.1px;
+}
+.panel-sub{
   color:var(--muted);
+  font-size:10px;
+  margin-top:3px;
 }
+.panel-body{padding:17px 18px}
+.panel.span2{grid-column:1/-1}
 
+.stat-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.stat{
+  min-width:0;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#0e1117;
+}
+.stat-label{
+  color:var(--muted);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.stat-value{
+  margin-top:7px;
+  font-size:20px;
+  font-weight:750;
+  letter-spacing:-.7px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.stat-accent{color:var(--accent2)}
+
+.kv{
+  display:grid;
+  grid-template-columns:145px 1fr;
+}
+.kv-row{display:contents}
+.kv-key,.kv-val{
+  padding:9px 0;
+  border-bottom:1px solid #ffffff07;
+  font-size:11px;
+}
+.kv-key{color:var(--muted)}
+.kv-val{word-break:break-word}
+.kv-val.mono{font-family:var(--mono);font-size:10px}
+
+.prompt-card{
+  position:relative;
+  padding:18px;
+}
+.prompt-label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:10px;
+}
+.prompt-dot{
+  width:7px;height:7px;border-radius:50%;
+}
+.prompt-positive .prompt-dot{background:var(--green);box-shadow:0 0 10px #54d89a}
+.prompt-negative .prompt-dot{background:var(--red);box-shadow:0 0 10px #ff687a}
+.prompt-text{
+  padding:14px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#0b0e13;
+  color:#dfe4ec;
+  white-space:pre-wrap;
+  word-break:break-word;
+  line-height:1.65;
+  font-size:11px;
+  max-height:260px;
+  overflow:auto;
+}
+.prompt-positive .prompt-text{border-left:2px solid var(--green)}
+.prompt-negative .prompt-text{border-left:2px solid var(--red)}
+
+.asset-list{display:grid;gap:8px}
+.asset{
+  padding:11px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#0e1117;
+}
+.asset-top{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+}
 .badge{
-  display:inline-block;
-  padding:3px 8px;
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  border:1px solid var(--line2);
+  background:#181c24;
+  color:#c4cad5;
   border-radius:999px;
-  font-size:.72rem;
-  border:1px solid var(--border);
-  background:var(--panel2);
+  padding:3px 7px;
+  font-size:9px;
+  font-weight:750;
+}
+.badge.green{color:#75e4ad;border-color:#54d89a35;background:#54d89a09}
+.badge.purple{color:#b9afff;border-color:#8b7cff38;background:#8b7cff09}
+.badge.yellow{color:#f4d681;border-color:#f1c76b35;background:#f1c76b09}
+.badge.red{color:#ff9ca8;border-color:#ff687a35;background:#ff687a09}
+.asset-file{
+  margin-top:7px;
+  color:#dce1ea;
+  font:10px/1.5 var(--mono);
+  word-break:break-word;
+}
+.asset-note{
+  color:var(--muted);
+  font-size:9px;
+  margin-top:5px;
 }
 
-.badge.good{
-  color:var(--green);
-  border-color:#46d36955;
+.empty{
+  color:var(--muted);
+  padding:15px 0;
+  font-size:11px;
 }
 
-.badge.warn{
-  color:var(--yellow);
-  border-color:#e5b94c55;
+/* JSON */
+.code-panel{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:#0c0f14;
+  overflow:hidden;
+}
+.code-toolbar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:11px;
+  border-bottom:1px solid var(--line);
+  background:#10131a;
+}
+.search{
+  flex:1;
+  min-width:160px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:9px 11px;
+  background:#0b0e13;
+  color:var(--text);
+  font-size:11px;
+}
+.code{
+  margin:0;
+  padding:18px;
+  max-height:720px;
+  overflow:auto;
+  white-space:pre;
+  tab-size:2;
+  font:11px/1.6 var(--mono);
+  color:#cbd2de;
+}
+.code::-webkit-scrollbar,.prompt-text::-webkit-scrollbar{width:8px;height:8px}
+.code::-webkit-scrollbar-thumb,.prompt-text::-webkit-scrollbar-thumb{
+  background:#303744;border-radius:20px;
 }
 
-footer{
+/* Nodes */
+.nodes-layout{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:14px;
+}
+.node-sidebar{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--panel);
+  padding:14px;
+  height:max-content;
+  position:sticky;
+  top:15px;
+}
+.node-filter{margin-bottom:10px}
+.node-count{
+  color:var(--muted);
+  font-size:10px;
+  margin:10px 2px 0;
+}
+.node-list{display:grid;gap:8px}
+.node{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.node-head{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:13px;
+  cursor:pointer;
+}
+.node-head:hover{background:#ffffff03}
+.node-chevron{
+  color:var(--dim);
+  font-size:10px;
+  transition:.15s;
+}
+.node.open .node-chevron{transform:rotate(90deg)}
+.node-number{
+  color:var(--dim);
+  font:9px var(--mono);
+}
+.node-title{
+  min-width:0;
+  flex:1;
+}
+.node-type{
+  font-size:11px;
+  font-weight:750;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.node-name{
+  color:var(--muted);
+  font-size:9px;
+  margin-top:3px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.node-body{
+  display:none;
+  padding:0 13px 13px;
+}
+.node.open .node-body{display:block}
+.node-values{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+}
+.value{
+  min-width:0;
+  padding:8px;
+  border-radius:9px;
+  border:1px solid #ffffff07;
+  background:#0c0f14;
+}
+.value-key{
+  color:var(--muted);
+  font-size:8px;
+  margin-bottom:4px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.value-val{
+  color:#d9dee7;
+  font:9px/1.5 var(--mono);
+  word-break:break-word;
+}
+.connection{
+  color:#8caeff;
+  border-color:#65a9ff18;
+  background:#65a9ff07;
+}
+.custom-tag{
+  color:#f1d27d;
+  border:1px solid #f1c76b2c;
+  background:#f1c76b09;
+  border-radius:999px;
+  padding:3px 6px;
+  font-size:8px;
+  font-weight:800;
+}
+.node-sidebar .mini-list{display:grid;gap:4px;margin-top:14px}
+.mini-pack{
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#0e1117;
+}
+.mini-pack b{
+  display:block;
+  font-size:9px;
+}
+.mini-pack span{
+  color:var(--muted);
+  font-size:8px;
+}
+
+/* Image */
+.image-panel{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:#090b10;
+  overflow:hidden;
+}
+.image-toolbar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:11px;
+  border-bottom:1px solid var(--line);
+  background:#10131a;
+}
+.image-stage{
+  min-height:600px;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:
+    linear-gradient(45deg,#0d1016 25%,transparent 25%),
+    linear-gradient(-45deg,#0d1016 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#0d1016 75%),
+    linear-gradient(-45deg,transparent 75%,#0d1016 75%);
+  background-size:24px 24px;
+  background-position:0 0,0 12px,12px -12px,-12px 0;
+}
+.image-stage img{
+  max-width:100%;
+  max-height:760px;
+  object-fit:contain;
+  box-shadow:0 25px 70px #0009;
+}
+.image-placeholder{
   text-align:center;
   color:var(--muted);
-  margin-top:45px;
-  font-size:.78rem;
+}
+.image-placeholder strong{
+  display:block;
+  color:var(--text);
+  margin-bottom:6px;
 }
 
-@media(max-width:750px){
-  .grid{grid-template-columns:1fr}
-  .card.full{grid-column:auto}
-  .kv{grid-template-columns:120px 1fr}
+/* Raw metadata */
+.metadata-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.meta-entry{
+  min-width:0;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#0e1117;
+}
+.meta-key{
+  color:var(--accent2);
+  font:9px var(--mono);
+  margin-bottom:7px;
+}
+.meta-value{
+  color:#d5dbe5;
+  font:10px/1.5 var(--mono);
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:220px;
+  overflow:auto;
+}
+
+/* Toast */
+.toast{
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  z-index:50;
+  padding:11px 14px;
+  border:1px solid var(--line2);
+  border-radius:12px;
+  background:#171b23;
+  box-shadow:0 15px 45px #0008;
+  color:#fff;
+  font-size:11px;
+  transform:translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  transition:.2s;
+}
+.toast.show{transform:none;opacity:1}
+
+/* Responsive */
+@media(max-width:1050px){
+  .dashboard{grid-template-columns:1fr}
+  .panel.span2{grid-column:auto}
+  .nodes-layout{grid-template-columns:1fr}
+  .node-sidebar{position:static}
+}
+@media(max-width:720px){
+  .app{width:min(100% - 20px,1480px);padding-top:12px}
+  .topbar{align-items:flex-start}
+  .top-actions .local-pill{display:none}
+  .hero,.hero-inner{min-height:390px}
+  .dropzone{padding:42px 18px}
+  .dropzone h2{font-size:22px}
+  .paste-panel{grid-template-columns:1fr}
+  .paste-actions{flex-direction:row}
+  .filebar{align-items:flex-start}
+  .filebar-actions{margin-left:0}
+  .filebar{flex-wrap:wrap}
+  .filebar-actions{width:100%}
+  .filebar-actions .btn{flex:1}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .metadata-grid{grid-template-columns:1fr}
   .node-values{grid-template-columns:1fr}
-  header{flex-direction:column}
-  .privacy{white-space:normal}
-  .toolbar .file-name{
-    width:100%;
-    margin-left:0;
-  }
+  .kv{grid-template-columns:110px 1fr}
+  .image-stage{min-height:400px;padding:12px}
 }
 </style>
 </head>
 
 <body>
-<div class="wrap">
+<div class="app">
 
-<header>
-  <div class="brand">
-    <h1>ComfyUI Metadata Viewer</h1>
-    <p>Inspect ComfyUI PNG metadata and workflow JSON completely locally.</p>
-  </div>
-  <div class="privacy">🔒 100% local processing</div>
-</header>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>NodeLens</h1>
+        <p>ComfyUI workflow intelligence, entirely in your browser.</p>
+      </div>
+    </div>
 
-<div id="drop">
-  <div class="icon">🖼️</div>
-  <strong>Drop a ComfyUI PNG or workflow JSON</strong>
-  <span>PNG metadata • UI workflow • API prompt • wrapped workflow JSON</span>
+    <div class="top-actions">
+      <div class="local-pill">
+        <span class="local-dot"></span>
+        LOCAL ONLY
+      </div>
+      <button class="btn ghost" id="newFile">New file</button>
+    </div>
+  </header>
+
+  <main>
+
+    <section id="emptyState" class="hero">
+      <div class="hero-inner">
+        <div>
+          <div
+            id="drop"
+            class="dropzone"
+            role="button"
+            tabindex="0"
+            aria-label="Drop a ComfyUI PNG or JSON file"
+          >
+            <div class="drop-icon">⌁</div>
+            <h2>Drop a workflow here</h2>
+            <p>
+              Inspect ComfyUI PNG metadata, UI workflows, API prompts,
+              model references, prompts, sampler settings, custom nodes,
+              connections and raw metadata without uploading anything.
+            </p>
+
+            <div class="drop-buttons">
+              <button class="btn primary" id="chooseFile">Choose PNG / JSON</button>
+              <button class="btn" id="loadSample">Open sample</button>
+            </div>
+
+            <div class="supported">
+              PNG metadata · UI workflow JSON · API prompt JSON · pasted JSON
+            </div>
+          </div>
+
+          <div class="paste-panel">
+            <textarea
+              id="paste"
+              class="paste-box"
+              placeholder="Or paste ComfyUI JSON here…"
+              spellcheck="false"
+            ></textarea>
+            <div class="paste-actions">
+              <button class="btn primary" id="parsePaste">Inspect JSON</button>
+              <button class="btn" id="clearPaste">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="error"></div>
+
+    <section id="workspace" class="workspace">
+
+      <div class="filebar">
+        <div class="file-chip">
+          <div class="file-icon" id="fileIcon">◈</div>
+          <div>
+            <div class="file-name" id="fileName">workflow.json</div>
+            <div class="file-meta" id="fileMeta">Ready</div>
+          </div>
+        </div>
+
+        <div class="filebar-actions">
+          <button class="btn" id="exportPrompt">Export prompt</button>
+          <button class="btn" id="exportWorkflow">Export workflow</button>
+          <button class="btn" id="exportMetadata">Export metadata</button>
+          <button class="btn primary" id="copyCurrent">Copy JSON</button>
+        </div>
+      </div>
+
+      <nav class="nav-shell" aria-label="Inspector sections">
+        <button class="nav-tab active" data-tab="summary"><span>01</span>Overview</button>
+        <button class="nav-tab" data-tab="image"><span>02</span>Image</button>
+        <button class="nav-tab" data-tab="prompt"><span>03</span>Prompt</button>
+        <button class="nav-tab" data-tab="workflow"><span>04</span>Workflow</button>
+        <button class="nav-tab" data-tab="nodes"><span>05</span>Nodes</button>
+        <button class="nav-tab" data-tab="raw"><span>06</span>Metadata</button>
+      </nav>
+
+      <!-- OVERVIEW -->
+      <section id="summary" class="tab-content active">
+
+        <div class="dashboard">
+
+          <div class="panel span2">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Workflow snapshot</div>
+                <div class="panel-sub">Detected structure and references at a glance</div>
+              </div>
+              <div id="formatBadge" class="badge purple">UNKNOWN</div>
+            </div>
+
+            <div class="panel-body">
+              <div class="stat-grid">
+                <div class="stat">
+                  <div class="stat-label">Nodes</div>
+                  <div class="stat-value" id="statNodes">—</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Model refs</div>
+                  <div class="stat-value" id="statModels">—</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Custom packs</div>
+                  <div class="stat-value" id="statCustom">—</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-label">Samplers</div>
+                  <div class="stat-value stat-accent" id="statSamplers">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">File</div>
+                <div class="panel-sub">Source information</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="fileInfo"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Generation</div>
+                <div class="panel-sub">Detected settings</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div id="settings"></div>
+            </div>
+          </div>
+
+          <div class="panel span2">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Prompts</div>
+                <div class="panel-sub">Traced from conditioning nodes and sampler inputs</div>
+              </div>
+            </div>
+
+            <div class="prompt-card prompt-positive">
+              <div class="prompt-label">
+                <span class="prompt-dot"></span>
+                Positive prompt
+              </div>
+              <div class="prompt-text" id="positive"></div>
+            </div>
+
+            <div class="prompt-card prompt-negative">
+              <div class="prompt-label">
+                <span class="prompt-dot"></span>
+                Negative prompt
+              </div>
+              <div class="prompt-text" id="negative"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Model references</div>
+                <div class="panel-sub">Detected checkpoints, LoRAs, VAEs and related assets</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="asset-list" id="models"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">Custom nodes</div>
+                <div class="panel-sub">Non-core node types and package hints</div>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="asset-list" id="customNodes"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- IMAGE -->
+      <section id="image" class="tab-content">
+        <div class="image-panel">
+          <div class="image-toolbar">
+            <span class="badge green">LOCAL IMAGE</span>
+            <span id="imageDimensions" style="color:var(--muted);font-size:10px"></span>
+            <span style="margin-left:auto;color:var(--muted);font-size:10px">
+              Original PNG preview
+            </span>
+          </div>
+          <div class="image-stage" id="imageView"></div>
+        </div>
+      </section>
+
+      <!-- PROMPT -->
+      <section id="prompt" class="tab-content">
+        <div class="code-panel">
+          <div class="code-toolbar">
+            <input class="search" id="promptSearch" placeholder="Search prompt JSON…" spellcheck="false">
+            <button class="btn" id="copyPrompt">Copy</button>
+          </div>
+          <pre class="code" id="promptJson"></pre>
+        </div>
+      </section>
+
+      <!-- WORKFLOW -->
+      <section id="workflow" class="tab-content">
+        <div class="code-panel">
+          <div class="code-toolbar">
+            <input class="search" id="workflowSearch" placeholder="Search workflow JSON…" spellcheck="false">
+            <button class="btn" id="copyWorkflow">Copy</button>
+          </div>
+          <pre class="code" id="workflowJson"></pre>
+        </div>
+      </section>
+
+      <!-- NODES -->
+      <section id="nodes" class="tab-content">
+        <div class="nodes-layout">
+
+          <aside class="node-sidebar">
+            <input
+              class="search node-filter"
+              id="nodeSearch"
+              placeholder="Search nodes…"
+              spellcheck="false"
+            >
+            <div class="node-count" id="nodeCount"></div>
+            <div class="mini-list" id="packList"></div>
+          </aside>
+
+          <div class="node-list" id="nodeList"></div>
+
+        </div>
+      </section>
+
+      <!-- RAW -->
+      <section id="raw" class="tab-content">
+        <div class="code-panel" style="margin-bottom:14px">
+          <div class="code-toolbar">
+            <span style="font-size:11px;font-weight:700">Raw PNG metadata</span>
+            <span style="margin-left:auto;color:var(--muted);font-size:10px" id="metadataCount"></span>
+            <button class="btn" id="copyMetadata">Copy</button>
+          </div>
+          <pre class="code" id="rawJson"></pre>
+        </div>
+
+        <div class="metadata-grid" id="metadataCards"></div>
+      </section>
+
+    </section>
+  </main>
 </div>
 
+<div class="toast" id="toast"></div>
 <input id="file" type="file" accept=".png,.json,image/png,application/json">
-
-<div class="paste">
-  <textarea id="paste" placeholder="Or paste ComfyUI workflow JSON here…"></textarea>
-  <div class="paste-actions">
-    <button class="primary" id="parsePaste">Read JSON</button>
-    <button id="sample">Load sample</button>
-  </div>
-</div>
-
-<div id="error"></div>
-
-<div id="app">
-
-  <div class="toolbar">
-    <button class="primary" id="exportPrompt">📥 Export Prompt</button>
-    <button id="exportWorkflow">📥 Export Workflow</button>
-    <button id="exportMetadata">📥 Export Metadata</button>
-    <button id="copyCurrent">📋 Copy JSON</button>
-    <span class="status" id="status"></span>
-    <span class="file-name" id="fileName"></span>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="summary">📊 Summary</button>
-    <button class="tab" data-tab="image">🖼️ Image</button>
-    <button class="tab" data-tab="prompt">⚙️ Prompt JSON</button>
-    <button class="tab" data-tab="workflow">🔄 Workflow JSON</button>
-    <button class="tab" data-tab="nodes">🎛️ Nodes</button>
-    <button class="tab" data-tab="raw">🧾 Raw Metadata</button>
-  </div>
-
-  <section id="summary" class="tab-content active">
-    <div class="grid">
-
-      <div class="card">
-        <h2>File</h2>
-        <div id="fileInfo"></div>
-      </div>
-
-      <div class="card">
-        <h2>Workflow</h2>
-        <div id="workflowInfo"></div>
-      </div>
-
-      <div class="card full">
-        <h2>Positive Prompt</h2>
-        <div class="prompt positive" id="positive"></div>
-      </div>
-
-      <div class="card full">
-        <h2>Negative Prompt</h2>
-        <div class="prompt negative" id="negative"></div>
-      </div>
-
-      <div class="card">
-        <h2>Model Information</h2>
-        <div id="models"></div>
-      </div>
-
-      <div class="card">
-        <h2>Generation Settings</h2>
-        <div id="settings"></div>
-      </div>
-
-    </div>
-  </section>
-
-  <section id="image" class="tab-content">
-    <div class="card">
-      <div class="image-wrap" id="imageView">
-        <span style="color:var(--muted)">No image loaded.</span>
-      </div>
-    </div>
-  </section>
-
-  <section id="prompt" class="tab-content">
-    <div class="card">
-      <input class="search" id="promptSearch" placeholder="🔍 Search prompt JSON…">
-      <pre id="promptJson"></pre>
-    </div>
-  </section>
-
-  <section id="workflow" class="tab-content">
-    <div class="card">
-      <input class="search" id="workflowSearch" placeholder="🔍 Search workflow JSON…">
-      <pre id="workflowJson"></pre>
-    </div>
-  </section>
-
-  <section id="nodes" class="tab-content">
-    <div class="card">
-      <input class="search" id="nodeSearch" placeholder="🔍 Search nodes, types, IDs, values…">
-      <div class="node-list" id="nodeList"></div>
-    </div>
-  </section>
-
-  <section id="raw" class="tab-content">
-    <div class="card">
-      <pre id="rawJson"></pre>
-    </div>
-  </section>
-
-</div>
-
-<footer>
-  Everything is processed in your browser. No upload, account, server, analytics, or external dependency.
-</footer>
-
-</div>
 
 <script>
 "use strict";
 
-/* ============================================================
-   ComfyUI Metadata Viewer
-   Completely dependency-free.
-   ============================================================ */
+/* ================================================================
+   NODELENS
+   Dependency-free ComfyUI metadata/workflow inspector.
+   ================================================================ */
 
 const $ = id => document.getElementById(id);
 
-let STATE = {
+const STATE = {
   file:null,
   imageURL:null,
   rawMetadata:{},
   prompt:null,
   workflow:null,
   normalized:null,
+  analysis:null,
+  pngInfo:null,
   currentJSON:null,
-  currentName:"workflow"
+  currentName:"workflow.json"
 };
 
-/* -------------------------- helpers -------------------------- */
-
-function esc(value){
-  return String(value ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-}
-
-function pretty(value){
-  return JSON.stringify(value,null,2);
-}
-
-function download(name,text,type="application/json"){
-  const blob = new Blob([text],{type});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>{
-    URL.revokeObjectURL(a.href);
-    a.remove();
-  },1000);
-}
-
-async function clipboard(text){
-  await navigator.clipboard.writeText(text);
-  $("status").textContent = "Copied to clipboard";
-  setTimeout(()=>$("status").textContent="",1500);
-}
-
-function error(message){
-  $("error").textContent = message;
-  $("error").style.display = "block";
-}
-
-function clearError(){
-  $("error").style.display = "none";
-}
-
-function sizeText(bytes){
-  if(bytes < 1024) return bytes+" B";
-  if(bytes < 1024**2) return (bytes/1024).toFixed(1)+" KB";
-  return (bytes/1024**2).toFixed(2)+" MB";
-}
-
-function basename(path){
-  return String(path).split(/[\\/]/).pop();
-}
-
-/* ----------------------- JSON detection ----------------------- */
-
-function detectFormat(j){
-  if(!j || typeof j!=="object") return null;
-
-  if(Array.isArray(j.nodes)){
-    return "ui";
-  }
-
-  const values=Object.values(j);
-  if(values.length &&
-     values.every(v=>v && typeof v==="object" && typeof v.class_type==="string")){
-    return "api";
-  }
-
-  return null;
-}
-
-function unwrapJSON(j){
-  if(detectFormat(j)) return j;
-
-  if(j && j.prompt && detectFormat(j.prompt)){
-    return j.prompt;
-  }
-
-  if(j && j.workflow && detectFormat(j.workflow)){
-    return j.workflow;
-  }
-
-  if(j && j.data && detectFormat(j.data)){
-    return j.data;
-  }
-
-  return j;
-}
-
-/* ---------------------- PNG metadata ------------------------- */
-
-function readU32(view,offset){
-  return view.getUint32(offset,false);
-}
-
-function readLatin(bytes){
-  return new TextDecoder("latin1").decode(bytes);
-}
-
-function readUTF8(bytes){
-  return new TextDecoder("utf-8").decode(bytes);
-}
-
-async function inflate(bytes){
-  if(typeof DecompressionStream==="undefined"){
-    throw new Error(
-      "This browser cannot decompress zTXt/iTXt PNG metadata. " +
-      "Use a current Chrome, Edge, Firefox, or Safari."
-    );
-  }
-
-  /* PNG zTXt/iTXt use zlib-wrapped DEFLATE. */
-  const formats=["deflate","deflate-raw"];
-
-  for(const format of formats){
-    try{
-      const ds=new DecompressionStream(format);
-      const stream=new Blob([bytes]).stream().pipeThrough(ds);
-      const buf=await new Response(stream).arrayBuffer();
-      return new Uint8Array(buf);
-    }catch(e){}
-  }
-
-  throw new Error("Unable to decompress PNG metadata.");
-}
-
-async function parsePNG(file){
-  const buffer=await file.arrayBuffer();
-  const bytes=new Uint8Array(buffer);
-  const view=new DataView(buffer);
-
-  const signature=[
-    137,80,78,71,13,10,26,10
-  ];
-
-  for(let i=0;i<8;i++){
-    if(bytes[i]!==signature[i]){
-      throw new Error("This file is not a valid PNG.");
-    }
-  }
-
-  let offset=8;
-  const metadata={};
-  let width=null;
-  let height=null;
-
-  while(offset+12<=bytes.length){
-
-    const length=readU32(view,offset);
-    const type=readLatin(bytes.subarray(offset+4,offset+8));
-    const dataStart=offset+8;
-    const dataEnd=dataStart+length;
-
-    if(dataEnd+4>bytes.length) break;
-
-    const data=bytes.subarray(dataStart,dataEnd);
-
-    if(type==="IHDR" && length>=13){
-      width=readU32(view,dataStart);
-      height=readU32(view,dataStart+4);
-    }
-
-    if(type==="tEXt"){
-      const zero=data.indexOf(0);
-
-      if(zero>=0){
-        const key=readLatin(data.subarray(0,zero));
-        const value=readLatin(data.subarray(zero+1));
-        metadata[key]=value;
-      }
-    }
-
-    else if(type==="zTXt"){
-      const zero=data.indexOf(0);
-
-      if(zero>=0 && zero+2<=data.length){
-        const key=readLatin(data.subarray(0,zero));
-        const compression=data[zero+1];
-
-        if(compression===0){
-          try{
-            const inflated=await inflate(data.subarray(zero+2));
-            metadata[key]=readUTF8(inflated);
-          }catch(e){
-            metadata[key]="[compressed metadata could not be decompressed]";
-          }
-        }
-      }
-    }
-
-    else if(type==="iTXt"){
-      /*
-        iTXt:
-        keyword\0
-        compression flag
-        compression method
-        language\0
-        translated keyword\0
-        text
-      */
-
-      let p=0;
-
-      const endKeyword=data.indexOf(0,p);
-      if(endKeyword<0) break;
-
-      const key=readUTF8(data.subarray(p,endKeyword));
-      p=endKeyword+1;
-
-      if(p+2>data.length) break;
-
-      const compressionFlag=data[p++];
-      const compressionMethod=data[p++];
-
-      const langEnd=data.indexOf(0,p);
-      if(langEnd<0) break;
-      p=langEnd+1;
-
-      const translatedEnd=data.indexOf(0,p);
-      if(translatedEnd<0) break;
-      p=translatedEnd+1;
-
-      let textBytes=data.subarray(p);
-
-      if(compressionFlag===1 && compressionMethod===0){
-        try{
-          textBytes=await inflate(textBytes);
-        }catch(e){
-          metadata[key]="[compressed metadata could not be decompressed]";
-          offset=dataEnd+4;
-          continue;
-        }
-      }
-
-      metadata[key]=readUTF8(textBytes);
-    }
-
-    if(type==="IEND") break;
-
-    offset=dataEnd+4;
-  }
-
-  return {
-    metadata,
-    width,
-    height
-  };
-}
-
-/* ----------------------- workflow core ----------------------- */
-
-const WIDGETS={
+const WIDGETS = {
   CheckpointLoaderSimple:["ckpt_name"],
   CheckpointLoader:["ckpt_name"],
   UNETLoader:["unet_name","weight_dtype"],
@@ -846,6 +1143,8 @@ const WIDGETS={
   StyleModelLoader:["style_model_name"],
   CLIPVisionLoader:["clip_name"],
   CLIPTextEncode:["text"],
+  CLIPTextEncodeSDXL:["text_g","text_l","width","height","crop_w","crop_h","target_width","target_height"],
+  CLIPTextEncodeSDXLRefiner:["text","ascore"],
   CLIPSetLastLayer:["stop_at_clip_layer"],
   EmptyLatentImage:["width","height","batch_size"],
   EmptySD3LatentImage:["width","height","batch_size"],
@@ -882,7 +1181,7 @@ const WIDGETS={
   MarkdownNote:["text"]
 };
 
-const CORE=new Set([
+const CORE = new Set([
   "KSampler","KSamplerAdvanced","SamplerCustom","SamplerCustomAdvanced",
   "CheckpointLoaderSimple","CheckpointLoader","UNETLoader","VAELoader",
   "LoraLoader","LoraLoaderModelOnly","CLIPLoader","DualCLIPLoader",
@@ -899,156 +1198,371 @@ const CORE=new Set([
   "LatentComposite","VAEDecode","VAEEncode","VAEDecodeTiled",
   "VAEEncodeTiled","SaveImage","PreviewImage","LoadImage",
   "LoadImageMask","ImageScale","ImageScaleBy","ImageInvert",
-  "ImageBatch","ImagePadForOutpaint","ImageCompositeMasked",
-  "ImageCrop","ImageBlend","ImageBlur","ImageQuantize",
-  "ImageSharpen","ImageScaleToTotalPixels","ImageUpscaleWithModel",
-  "SaveAnimatedWEBP","SaveAnimatedPNG","SaveWEBM","SaveVideo",
-  "MaskToImage","ImageToMask","SolidMask","InvertMask","CropMask",
-  "MaskComposite","FeatherMask","GrowMask","BasicScheduler",
-  "KarrasScheduler","ExponentialScheduler","SDTurboScheduler",
-  "RandomNoise","DisableNoise","BasicGuider","CFGGuider",
-  "ModelSamplingDiscrete","ModelSamplingContinuousEDM",
-  "ModelSamplingContinuousV","RescaleCFG","ModelMergeSimple",
-  "ModelMergeBlocks","ModelMergeSubtract","ModelMergeAdd",
-  "CheckpointSave","CLIPMergeSimple","CLIPSave","VAESave",
-  "LoadLatent","SaveLatent","Note","MarkdownNote","PrimitiveNode",
-  "PrimitiveInt","PrimitiveFloat","PrimitiveString","Reroute",
-  "GetImageSize","CreateVideo","GetVideoComponents"
+  "ImageBatch","ImageBlend","ImageBlendMasked","ImagePadForOutpaint",
+  "MaskToImage","ImageToMask","SolidMask","InvertMask",
+  "EmptyImage","RepeatImageBatch","BatchImages",
+  "SetLatentNoiseMask","LatentFromBatch","LatentRotate",
+  "LatentFlip","LatentBatch","ConditioningSetAreaPercentage",
+  "ConditioningSetAreaStrength","ConditioningSetAreaContrainBounds",
+  "ConditioningZeroOut","ConditioningAverage","ConditioningCombine",
+  "CLIPLoader","CLIPTextEncode","CheckpointLoaderSimple",
+  "UNETLoader","VAELoader","FreeU","FreeU_V2",
+  "ModelSamplingDiscrete","ModelSamplingFlux","ModelSamplingSD3",
+  "ModelSamplingAuraFlow","ModelSamplingLTXV",
+  "ModelSamplingStableCascade","ModelSamplingContinuousEDM",
+  "ModelSamplingContinuousV","CFGGuider","BasicGuider",
+  "BasicScheduler","RandomNoise","KSamplerSelect",
+  "SamplerCustom","SamplerCustomAdvanced","SplitSigmas",
+  "FlipSigmas","SetFirstSigma","JoinImageWithAlpha",
+  "GetImageSize","GetImageSizeAndCount","PreviewAnimation",
+  "VHS_VideoCombine","SaveVideo","SaveWEBM"
 ]);
 
-const PACK_EXACT={
-  UltimateSDUpscale:"ComfyUI_UltimateSDUpscale",
-  FaceDetailer:"ComfyUI-Impact-Pack",
-  FaceDetailerPipe:"ComfyUI-Impact-Pack",
-  SAMLoader:"ComfyUI-Impact-Pack",
-  DetailerForEach:"ComfyUI-Impact-Pack",
-  UltralyticsDetectorProvider:"ComfyUI-Impact-Subpack",
-  IPAdapter:"ComfyUI_IPAdapter_plus",
-  IPAdapterAdvanced:"ComfyUI_IPAdapter_plus",
-  IPAdapterUnifiedLoader:"ComfyUI_IPAdapter_plus",
-  ReActorFaceSwap:"comfyui-reactor-node",
-  DWPreprocessor:"comfyui_controlnet_aux",
-  AIO_Preprocessor:"comfyui_controlnet_aux",
-  OpenposePreprocessor:"comfyui_controlnet_aux",
-  LineArtPreprocessor:"comfyui_controlnet_aux",
-  DepthAnythingPreprocessor:"comfyui_controlnet_aux",
-  SUPIR_Upscale:"ComfyUI-SUPIR",
-  "RIFE VFI":"ComfyUI-Frame-Interpolation",
-  UnetLoaderGGUF:"ComfyUI-GGUF",
-  DualCLIPLoaderGGUF:"ComfyUI-GGUF",
-  CLIPLoaderGGUF:"ComfyUI-GGUF"
-};
-
-const PACK_PREFIX=[
-  [/^VHS_/,"ComfyUI-VideoHelperSuite"],
-  [/^ADE_/,"ComfyUI-AnimateDiff-Evolved"],
-  [/^Impact/,"ComfyUI-Impact-Pack"],
-  [/^CR\s/,"ComfyUI_Comfyroll_CustomNodes"],
-  [/^ttN\s?/,"ComfyUI_tinyterraNodes"],
-  [/^easy\s/,"ComfyUI-Easy-Use"],
-  [/\(rgthree\)$/,"rgthree-comfy"],
-  [/KJ$/,"ComfyUI-KJNodes"],
-  [/^WanVideo/,"ComfyUI-WanVideoWrapper"],
-  [/^Inspire/,"ComfyUI-Inspire-Pack"],
-  [/GGUF/i,"ComfyUI-GGUF"]
+const PACK_HINTS = [
+  [/^VHS_/i,"VideoHelperSuite"],
+  [/^Wan/i,"ComfyUI-WanVideoWrapper"],
+  [/^LTXV/i,"ComfyUI-LTXVideo"],
+  [/^Flux/i,"ComfyUI core / Flux"],
+  [/^IPAdapter/i,"ComfyUI_IPAdapter_plus"],
+  [/^ControlNet/i,"ControlNet"],
+  [/^Impact/i,"ComfyUI-Impact-Pack"],
+  [/^Ultralytics/i,"ComfyUI_Ultralytics"],
+  [/^AnimateDiff/i,"AnimateDiff"],
+  [/^Face/i,"Face / InsightFace"],
+  [/^InstantID/i,"InstantID"],
+  [/^ReActor/i,"ReActor"],
+  [/^Florence/i,"Florence"],
+  [/^SAM/i,"SAM"],
+  [/^Segment/i,"Segmentation"]
 ];
 
 function packHint(type){
-  if(PACK_EXACT[type]) return PACK_EXACT[type];
+  for(const [rx,name] of PACK_HINTS){
+    if(rx.test(type)) return name;
+  }
+  return null;
+}
 
-  for(const [re,pack] of PACK_PREFIX){
-    if(re.test(type)) return pack;
+function esc(value){
+  return String(value ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
+function pretty(value){
+  try{
+    return JSON.stringify(value,null,2);
+  }catch{
+    return String(value);
+  }
+}
+
+function sizeText(bytes){
+  if(bytes == null) return "—";
+  if(bytes < 1024) return `${bytes} B`;
+  if(bytes < 1024**2) return `${(bytes/1024).toFixed(1)} KB`;
+  if(bytes < 1024**3) return `${(bytes/1024**2).toFixed(2)} MB`;
+  return `${(bytes/1024**3).toFixed(2)} GB`;
+}
+
+function toast(message){
+  const el=$("toast");
+  el.textContent=message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer=setTimeout(()=>el.classList.remove("show"),1700);
+}
+
+async function clipboard(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("Copied to clipboard");
+  }catch{
+    const ta=document.createElement("textarea");
+    ta.value=text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+    toast("Copied to clipboard");
+  }
+}
+
+function download(name,text,type="application/json"){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function showError(message){
+  $("error").textContent=message;
+  $("error").style.display="block";
+}
+
+function clearError(){
+  $("error").style.display="none";
+  $("error").textContent="";
+}
+
+function detectFormat(j){
+  if(!j || typeof j!=="object") return null;
+
+  if(Array.isArray(j.nodes)){
+    return "ui";
+  }
+
+  const values=Object.values(j);
+  if(
+    values.length &&
+    values.every(
+      v=>v &&
+      typeof v==="object" &&
+      typeof v.class_type==="string" &&
+      v.inputs &&
+      typeof v.inputs==="object"
+    )
+  ){
+    return "api";
   }
 
   return null;
 }
 
-function normalize(json){
+function unwrapJSON(j){
+  if(detectFormat(j)) return j;
 
-  let j=unwrapJSON(json);
+  if(j?.prompt && detectFormat(j.prompt)) return j.prompt;
+  if(j?.workflow && detectFormat(j.workflow)) return j.workflow;
+  if(j?.data && detectFormat(j.data)) return j.data;
+
+  return j;
+}
+
+/* ================================================================
+   PNG PARSER
+   ================================================================ */
+
+function readU32(view,offset){
+  return view.getUint32(offset,false);
+}
+
+function readLatin(bytes){
+  return new TextDecoder("latin1").decode(bytes);
+}
+
+function readUTF8(bytes){
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function inflate(bytes){
+  if(typeof DecompressionStream==="undefined"){
+    throw new Error(
+      "This browser cannot decompress compressed PNG metadata. " +
+      "Use a current Chrome, Edge, Firefox or Safari."
+    );
+  }
+
+  for(const format of ["deflate","deflate-raw"]){
+    try{
+      const ds=new DecompressionStream(format);
+      const stream=new Blob([bytes]).stream().pipeThrough(ds);
+      const buffer=await new Response(stream).arrayBuffer();
+      return new Uint8Array(buffer);
+    }catch{}
+  }
+
+  throw new Error("Unable to decompress PNG metadata.");
+}
+
+async function parsePNG(file){
+  const buffer=await file.arrayBuffer();
+  const bytes=new Uint8Array(buffer);
+  const view=new DataView(buffer);
+
+  const signature=[137,80,78,71,13,10,26,10];
+
+  for(let i=0;i<8;i++){
+    if(bytes[i]!==signature[i]){
+      throw new Error("This file is not a valid PNG.");
+    }
+  }
+
+  let offset=8;
+  const metadata={};
+  let width=null;
+  let height=null;
+
+  while(offset+12<=bytes.length){
+    const length=readU32(view,offset);
+    const type=readLatin(bytes.subarray(offset+4,offset+8));
+    const dataStart=offset+8;
+    const dataEnd=dataStart+length;
+
+    if(dataEnd+4>bytes.length) break;
+
+    const data=bytes.subarray(dataStart,dataEnd);
+
+    if(type==="IHDR" && length>=13){
+      width=readU32(view,dataStart);
+      height=readU32(view,dataStart+4);
+    }
+
+    if(type==="tEXt"){
+      const zero=data.indexOf(0);
+      if(zero>=0){
+        const key=readLatin(data.subarray(0,zero));
+        const value=readLatin(data.subarray(zero+1));
+        metadata[key]=value;
+      }
+    }
+
+    else if(type==="zTXt"){
+      const zero=data.indexOf(0);
+
+      if(zero>=0 && zero+2<=data.length){
+        const key=readLatin(data.subarray(0,zero));
+        const compression=data[zero+1];
+
+        if(compression===0){
+          try{
+            const inflated=await inflate(data.subarray(zero+2));
+            metadata[key]=readUTF8(inflated);
+          }catch{
+            metadata[key]="[compressed metadata could not be decompressed]";
+          }
+        }
+      }
+    }
+
+    else if(type==="iTXt"){
+      let p=0;
+
+      const keywordEnd=data.indexOf(0,p);
+      if(keywordEnd<0) break;
+
+      const key=readUTF8(data.subarray(p,keywordEnd));
+      p=keywordEnd+1;
+
+      if(p+2>data.length) break;
+
+      const compressionFlag=data[p++];
+      const compressionMethod=data[p++];
+
+      const langEnd=data.indexOf(0,p);
+      if(langEnd<0) break;
+      p=langEnd+1;
+
+      const translatedEnd=data.indexOf(0,p);
+      if(translatedEnd<0) break;
+      p=translatedEnd+1;
+
+      let textBytes=data.subarray(p);
+
+      if(compressionFlag===1 && compressionMethod===0){
+        try{
+          textBytes=await inflate(textBytes);
+        }catch{
+          metadata[key]="[compressed metadata could not be decompressed]";
+          offset=dataEnd+4;
+          continue;
+        }
+      }
+
+      metadata[key]=readUTF8(textBytes);
+    }
+
+    if(type==="IEND") break;
+
+    offset=dataEnd+4;
+  }
+
+  return {metadata,width,height};
+}
+
+/* ================================================================
+   NORMALIZATION
+   ================================================================ */
+
+function normalize(j){
   const format=detectFormat(j);
 
   if(!format){
     throw new Error(
-      "JSON does not appear to be a ComfyUI UI-export or API-format workflow."
+      "Unrecognized JSON. Expected a ComfyUI API prompt or UI workflow export."
     );
   }
 
   const nodes=[];
 
   if(format==="api"){
-
-    for(const [id,n] of Object.entries(j)){
-
-      if(!n || typeof n!=="object" || !n.class_type) continue;
+    for(const [id,node] of Object.entries(j)){
+      if(!node || typeof node!=="object") continue;
 
       const widgets=[];
       const conns=[];
 
-      for(const [key,value] of Object.entries(n.inputs||{})){
-
-        if(Array.isArray(value) &&
-           value.length===2 &&
-           (typeof value[0]==="string" || typeof value[0]==="number")){
-
+      for(const [key,value] of Object.entries(node.inputs || {})){
+        if(
+          Array.isArray(value) &&
+          value.length===2 &&
+          (typeof value[0]==="string" || typeof value[0]==="number")
+        ){
           conns.push({
             input:key,
-            fromId:String(value[0])
+            fromId:String(value[0]),
+            slot:value[1]
           });
-
         }else{
-          widgets.push({
-            name:key,
-            value
-          });
+          widgets.push({name:key,value});
         }
       }
 
       nodes.push({
         id:String(id),
-        type:n.class_type,
-        title:n._meta?.title || null,
+        type:node.class_type || "Unknown",
+        title:node._meta?.title || null,
         widgets,
-        conns
+        conns,
+        pack:node._meta?.cnr_id || null
       });
     }
-
   }else{
-
     const links={};
 
-    for(const l of j.links||[]){
-
-      if(Array.isArray(l) && l.length>=4){
-        links[String(l[0])]=String(l[1]);
-      }
-
-      else if(l && typeof l==="object" && l.id!=null){
-        links[String(l.id)]=String(l.origin_id);
+    for(const link of j.links || []){
+      if(Array.isArray(link) && link.length>=4){
+        links[String(link[0])]=String(link[1]);
+      }else if(link && typeof link==="object" && link.id!=null){
+        links[String(link.id)]=String(link.origin_id);
       }
     }
 
-    for(const n of j.nodes||[]){
+    for(const node of j.nodes || []){
+      if(!node || typeof node!=="object") continue;
 
-      if(!n || typeof n!=="object") continue;
-
-      const type=n.type||"Unknown";
+      const type=node.type || "Unknown";
       const widgets=[];
-      const values=n.widgets_values;
+      const values=node.widgets_values;
 
       if(Array.isArray(values)){
-
-        const names=WIDGETS[type]||[];
+        const names=WIDGETS[type] || [];
 
         values.forEach((value,index)=>{
           widgets.push({
-            name:names[index]||`value_${index+1}`,
+            name:names[index] || `value_${index+1}`,
             value
           });
         });
-
       }else if(values && typeof values==="object"){
-
         for(const [name,value] of Object.entries(values)){
           widgets.push({name,value});
         }
@@ -1056,26 +1570,26 @@ function normalize(json){
 
       const conns=[];
 
-      for(const input of n.inputs||[]){
-
-        if(input &&
-           input.link!=null &&
-           links[String(input.link)]!=null){
-
+      for(const input of node.inputs || []){
+        if(
+          input &&
+          input.link!=null &&
+          links[String(input.link)]!=null
+        ){
           conns.push({
-            input:input.name||"?",
+            input:input.name || "?",
             fromId:links[String(input.link)]
           });
         }
       }
 
       nodes.push({
-        id:String(n.id),
+        id:String(node.id),
         type,
-        title:n.title||null,
+        title:node.title || null,
         widgets,
         conns,
-        pack:n.properties?.cnr_id || null
+        pack:node.properties?.cnr_id || node.properties?.aux_id || null
       });
     }
   }
@@ -1087,38 +1601,48 @@ function normalize(json){
   };
 }
 
-/* ------------------------ analysis ---------------------------- */
+/* ================================================================
+   ANALYSIS
+   ================================================================ */
 
 function getWidget(node,name){
   return node.widgets.find(x=>x.name===name)?.value;
 }
 
-function nodeDisplay(n){
-  return n.title ? `${n.title} (${n.type})` : n.type;
+function nodeDisplay(node){
+  return node.title
+    ? `${node.title} (${node.type})`
+    : node.type;
 }
 
 function traceText(byId,start,visited=new Set()){
-
-  if(visited.has(start) || visited.size>80) return null;
+  if(visited.has(start) || visited.size>100) return null;
 
   visited.add(start);
 
-  const n=byId[start];
-  if(!n) return null;
+  const node=byId[start];
+  if(!node) return null;
 
-  if(/CLIPTextEncode/i.test(n.type)){
-    const text=getWidget(n,"text");
+  if(/CLIPTextEncode/i.test(node.type)){
+    const text=getWidget(node,"text");
 
     if(typeof text==="string"){
+      return {id:node.id,text};
+    }
+
+    const textG=getWidget(node,"text_g");
+    const textL=getWidget(node,"text_l");
+
+    if(typeof textG==="string" || typeof textL==="string"){
       return {
-        id:n.id,
-        text
+        id:node.id,
+        text:[textG,textL].filter(Boolean).join("\n")
       };
     }
   }
 
-  for(const c of n.conns){
-    const found=traceText(byId,c.fromId,visited);
+  for(const connection of node.conns){
+    const found=traceText(byId,connection.fromId,visited);
     if(found) return found;
   }
 
@@ -1126,123 +1650,112 @@ function traceText(byId,start,visited=new Set()){
 }
 
 function analyze(normal){
-
   const nodes=normal.nodes;
   const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
 
   const custom={};
   const assets=[];
   const seenAssets=new Set();
+  const samplers=[];
+  const dimensions=[];
 
-  for(const n of nodes){
+  for(const node of nodes){
 
     const pack=
-      n.pack &&
-      n.pack!=="comfy-core"
-      ? n.pack
-      : packHint(n.type);
+      node.pack &&
+      node.pack!=="comfy-core"
+      ? node.pack
+      : packHint(node.type);
 
-    if(pack || !CORE.has(n.type)){
-
+    if(pack || !CORE.has(node.type)){
       const p=pack || "(unknown custom node pack)";
 
       if(!custom[p]) custom[p]=new Set();
 
-      custom[p].add(n.type);
+      custom[p].add(node.type);
     }
 
-    for(const w of n.widgets){
+    for(const widget of node.widgets){
+      if(typeof widget.value!=="string") continue;
 
-      if(typeof w.value!=="string") continue;
+      const value=widget.value;
 
-      const value=w.value;
-
-      const modelKey =
-        /^(ckpt_name|unet_name|lora_name|vae_name|control_net_name|clip_name|clip_name1|clip_name2|clip_name3|style_model_name|model_name)$/.test(w.name) ||
+      const isModel=
+        /^(ckpt_name|unet_name|lora_name|vae_name|control_net_name|clip_name|clip_name1|clip_name2|clip_name3|clip_name4|style_model_name|model_name|upscale_model)$/.test(widget.name) ||
         /\.(safetensors|ckpt|pt|pth|gguf|sft|onnx|bin)$/i.test(value);
 
-      if(!modelKey) continue;
+      if(isModel){
+        const key=widget.name+"|"+value;
 
-      const key=w.name+"|"+value;
+        if(!seenAssets.has(key)){
+          seenAssets.add(key);
 
-      if(seenAssets.has(key)) continue;
+          let category="Model";
 
-      seenAssets.add(key);
+          if(widget.name==="ckpt_name") category="Checkpoint";
+          else if(widget.name==="unet_name") category="Diffusion";
+          else if(widget.name==="lora_name") category="LoRA";
+          else if(widget.name==="vae_name") category="VAE";
+          else if(/control_net/i.test(widget.name)) category="ControlNet";
+          else if(/clip_name/i.test(widget.name)) category="CLIP";
+          else if(/upscale/i.test(node.type)) category="Upscaler";
 
-      let category="Model";
+          const notes=[];
 
-      if(w.name==="ckpt_name") category="Checkpoint";
-      else if(w.name==="unet_name") category="Diffusion Model";
-      else if(w.name==="lora_name") category="LoRA";
-      else if(w.name==="vae_name") category="VAE";
-      else if(/control_net/i.test(w.name)) category="ControlNet";
-      else if(/clip_name/i.test(w.name)) category="CLIP";
-      else if(/upscale/i.test(n.type)) category="Upscaler";
+          if(widget.name==="lora_name"){
+            const sm=getWidget(node,"strength_model");
+            const sc=getWidget(node,"strength_clip");
 
-      const notes=[];
+            if(sm!==undefined){
+              notes.push(
+                "strength "+sm+
+                (sc!==undefined && sc!==sm ? " / clip "+sc : "")
+              );
+            }
+          }
 
-      if(w.name==="lora_name"){
-        const sm=getWidget(n,"strength_model");
-        const sc=getWidget(n,"strength_clip");
-
-        if(sm!==undefined){
-          notes.push(
-            "strength "+sm+
-            (sc!==undefined && sc!==sm ? " / clip "+sc:"")
-          );
+          assets.push({
+            category,
+            file:value,
+            notes,
+            node:nodeDisplay(node)
+          });
         }
       }
-
-      assets.push({
-        category,
-        file:value,
-        notes,
-        node:nodeDisplay(n)
-      });
     }
-  }
 
-  const samplers=[];
-
-  for(const n of nodes){
-
-    if(/^KSampler/.test(n.type) ||
-       /SamplerCustom/i.test(n.type)){
-
+    if(
+      /^KSampler/i.test(node.type) ||
+      /SamplerCustom/i.test(node.type)
+    ){
       const settings={};
 
       for(const name of [
         "seed","noise_seed","steps","cfg",
         "sampler_name","scheduler","denoise",
-        "start_at_step","end_at_step"
+        "start_at_step","end_at_step",
+        "add_noise","control_after_generate"
       ]){
-        const value=getWidget(n,name);
+        const value=getWidget(node,name);
         if(value!==undefined) settings[name]=value;
       }
 
       samplers.push({
-        node:n.id,
-        type:n.type,
+        node:nodeDisplay(node),
         settings
       });
     }
-  }
 
-  const dimensions=[];
-
-  for(const n of nodes){
-
-    const width=getWidget(n,"width");
-    const height=getWidget(n,"height");
+    const width=getWidget(node,"width");
+    const height=getWidget(node,"height");
 
     if(width!==undefined && height!==undefined){
-
       dimensions.push({
-        node:nodeDisplay(n),
+        node:nodeDisplay(node),
         width,
         height,
-        batch:getWidget(n,"batch_size"),
-        length:getWidget(n,"length")
+        batch:getWidget(node,"batch_size"),
+        length:getWidget(node,"length")
       });
     }
   }
@@ -1250,45 +1763,59 @@ function analyze(normal){
   let positive=null;
   let negative=null;
 
-  for(const n of nodes){
-
-    if(!/^(KSampler|KSamplerAdvanced)$/.test(n.type)) continue;
-
-    const positiveConn=n.conns.find(c=>/positive/i.test(c.input));
-    const negativeConn=n.conns.find(c=>/negative/i.test(c.input));
-
-    if(positiveConn && !positive){
-      positive=traceText(byId,positiveConn.fromId);
+  for(const node of nodes){
+    if(!/^(KSampler|KSamplerAdvanced|SamplerCustom|SamplerCustomAdvanced)$/.test(node.type)){
+      continue;
     }
 
-    if(negativeConn && !negative){
-      negative=traceText(byId,negativeConn.fromId);
+    const positiveConnection=
+      node.conns.find(c=>/positive/i.test(c.input));
+
+    const negativeConnection=
+      node.conns.find(c=>/negative/i.test(c.input));
+
+    if(positiveConnection && !positive){
+      positive=traceText(byId,positiveConnection.fromId);
+    }
+
+    if(negativeConnection && !negative){
+      negative=traceText(byId,negativeConnection.fromId);
     }
   }
 
-  /* fallback: inspect every text node */
-  if(!positive){
+  const textNodes=[];
 
-    for(const n of nodes){
+  for(const node of nodes){
+    if(/CLIPTextEncode/i.test(node.type)){
+      const text=getWidget(node,"text");
 
-      if(/CLIPTextEncode/i.test(n.type)){
-
-        const text=getWidget(n,"text");
-
-        if(typeof text==="string" && text.trim()){
-
-          if(!positive){
-            positive={
-              id:n.id,
-              text
-            };
-          }
-        }
+      if(typeof text==="string" && text.trim()){
+        textNodes.push({
+          id:node.id,
+          text,
+          node
+        });
       }
     }
   }
 
-  const outputs=nodes.filter(n=>/save|preview|output|videocombine/i.test(n.type));
+  if(!positive && textNodes.length){
+    positive={
+      id:textNodes[0].id,
+      text:textNodes[0].text
+    };
+  }
+
+  if(!negative && textNodes.length>1){
+    negative={
+      id:textNodes[1].id,
+      text:textNodes[1].text
+    };
+  }
+
+  const outputs=nodes.filter(
+    n=>/save|preview|output|videocombine/i.test(n.type)
+  );
 
   return {
     byId,
@@ -1305,91 +1832,80 @@ function analyze(normal){
   };
 }
 
-/* ----------------------- rendering ---------------------------- */
+/* ================================================================
+   RENDERING
+   ================================================================ */
 
-function renderKV(el,data){
-
-  el.innerHTML=`
+function renderKV(element,data){
+  element.innerHTML=`
     <div class="kv">
-      ${Object.entries(data).map(([k,v])=>`
-        <div class="k">${esc(k)}</div>
-        <div>${esc(typeof v==="object" ? JSON.stringify(v) : v)}</div>
+      ${Object.entries(data).map(([key,value])=>`
+        <div class="kv-row">
+          <div class="kv-key">${esc(key)}</div>
+          <div class="kv-val ${typeof value==="string" && value.length>40 ? "mono":""}">
+            ${esc(
+              typeof value==="object"
+                ? JSON.stringify(value)
+                : value
+            )}
+          </div>
+        </div>
       `).join("")}
     </div>
   `;
 }
 
-function render(){
-
-  $("app").style.display="block";
-
+function renderOverview(){
   const normal=STATE.normalized;
   const info=STATE.analysis;
 
-  $("fileName").textContent=STATE.currentName;
+  $("statNodes").textContent=normal.nodes.length;
+  $("statModels").textContent=info.assets.length;
+  $("statCustom").textContent=info.custom.length;
+  $("statSamplers").textContent=info.samplers.length;
+
+  const formatBadge=$("formatBadge");
+
+  if(normal.format==="ui"){
+    formatBadge.textContent="UI WORKFLOW";
+    formatBadge.className="badge purple";
+  }else{
+    formatBadge.textContent="API PROMPT";
+    formatBadge.className="badge green";
+  }
 
   renderKV($("fileInfo"),{
     "Name":STATE.currentName,
-    "Size":STATE.file ? sizeText(STATE.file.size) : "—",
-    "Type":STATE.file?.type || "JSON",
+    "Size":STATE.file ? sizeText(STATE.file.size) : "Pasted JSON",
+    "Type":STATE.file?.type || "application/json",
     "PNG dimensions":
       STATE.pngInfo?.width
-      ? `${STATE.pngInfo.width} × ${STATE.pngInfo.height}`
-      : "—"
+        ? `${STATE.pngInfo.width} × ${STATE.pngInfo.height}`
+        : "—"
   });
-
-  renderKV($("workflowInfo"),{
-    "Format":normal.format==="ui" ? "UI Export" : "API Format",
-    "Nodes":normal.nodes.length,
-    "Custom node packs":info.custom.length,
-    "Model references":info.assets.length,
-    "Sampler nodes":info.samplers.length
-  });
-
-  $("positive").textContent=
-    info.positive?.text || "No positive prompt could be traced.";
-
-  $("negative").textContent=
-    info.negative?.text || "No negative prompt could be traced.";
-
-  if(info.assets.length){
-
-    $("models").innerHTML=info.assets.map(a=>`
-      <div style="padding:8px 0;border-bottom:1px solid var(--border)">
-        <span class="badge">${esc(a.category)}</span>
-        <div style="font-family:ui-monospace,monospace;font-size:.82rem;margin-top:4px;word-break:break-word">
-          ${esc(a.file)}
-        </div>
-        ${a.notes.length
-          ? `<div style="color:var(--muted);font-size:.75rem">${esc(a.notes.join(" • "))}</div>`
-          : ""}
-      </div>
-    `).join("");
-
-  }else{
-
-    $("models").innerHTML=
-      `<span style="color:var(--muted)">No obvious model files found.</span>`;
-  }
 
   const settings={};
 
   if(info.dimensions.length){
-
-    settings["Resolution"]=
-      [...new Set(info.dimensions.map(x=>`${x.width}×${x.height}`))].join(", ");
-
+    settings["Resolution"]=[
+      ...new Set(
+        info.dimensions.map(x=>`${x.width} × ${x.height}`)
+      )
+    ].join(", ");
   }
 
   if(info.samplers.length){
-
     const first=info.samplers[0].settings;
 
     for(const key of [
-      "steps","cfg","sampler_name","scheduler","denoise",
-      "seed","noise_seed"
+      "steps",
+      "cfg",
+      "sampler_name",
+      "scheduler",
+      "denoise",
+      "seed",
+      "noise_seed"
     ]){
-
       if(first[key]!==undefined){
         settings[key]=first[key];
       }
@@ -1398,103 +1914,275 @@ function render(){
 
   renderKV(
     $("settings"),
-    Object.keys(settings).length ? settings : {"Information":"No standard settings detected."}
+    Object.keys(settings).length
+      ? settings
+      : {"Status":"No standard settings detected."}
   );
 
+  $("positive").textContent=
+    info.positive?.text ||
+    "No positive prompt could be traced.";
+
+  $("negative").textContent=
+    info.negative?.text ||
+    "No negative prompt could be traced.";
+
+  renderAssets();
+  renderCustomPacks();
+}
+
+function assetBadgeClass(category){
+  if(category==="Checkpoint") return "purple";
+  if(category==="LoRA") return "yellow";
+  if(category==="VAE") return "green";
+  if(category==="ControlNet") return "red";
+  return "";
+}
+
+function renderAssets(){
+  const assets=STATE.analysis.assets;
+
+  if(!assets.length){
+    $("models").innerHTML=`<div class="empty">No obvious model references found.</div>`;
+    return;
+  }
+
+  $("models").innerHTML=assets.map(asset=>`
+    <div class="asset">
+      <div class="asset-top">
+        <span class="badge ${assetBadgeClass(asset.category)}">
+          ${esc(asset.category)}
+        </span>
+      </div>
+      <div class="asset-file">${esc(asset.file)}</div>
+      ${
+        asset.notes.length
+          ? `<div class="asset-note">${esc(asset.notes.join(" · "))}</div>`
+          : ""
+      }
+      <div class="asset-note">${esc(asset.node)}</div>
+    </div>
+  `).join("");
+}
+
+function renderCustomPacks(){
+  const packs=STATE.analysis.custom;
+
+  if(!packs.length){
+    $("customNodes").innerHTML=`
+      <div class="empty">
+        No custom node types detected. This workflow appears to use core nodes only.
+      </div>
+    `;
+    return;
+  }
+
+  $("customNodes").innerHTML=packs.map(pack=>`
+    <div class="asset">
+      <div class="asset-top">
+        <span class="badge yellow">CUSTOM</span>
+        <span style="font-size:10px;font-weight:750">${esc(pack.pack)}</span>
+      </div>
+      <div class="asset-note">
+        ${pack.nodes.map(esc).join(" · ")}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderImage(){
+  if(STATE.imageURL){
+    $("imageView").innerHTML=
+      `<img src="${STATE.imageURL}" alt="Loaded ComfyUI PNG">`;
+
+    $("imageDimensions").textContent=
+      STATE.pngInfo?.width
+        ? `${STATE.pngInfo.width} × ${STATE.pngInfo.height}`
+        : "";
+  }else{
+    $("imageView").innerHTML=`
+      <div class="image-placeholder">
+        <strong>No PNG image loaded</strong>
+        The Image view becomes available when a ComfyUI PNG is opened.
+      </div>
+    `;
+    $("imageDimensions").textContent="";
+  }
+}
+
+function renderJSON(){
   $("promptJson").textContent=
     pretty(STATE.prompt ?? {});
 
   $("workflowJson").textContent=
-    pretty(STATE.workflow ?? normal.original);
+    pretty(STATE.workflow ?? STATE.normalized?.original ?? {});
 
   $("rawJson").textContent=
     pretty(STATE.rawMetadata);
 
-  renderNodes();
+  $("metadataCount").textContent=
+    `${Object.keys(STATE.rawMetadata || {}).length} entries`;
 
-  if(STATE.imageURL){
+  const metadata=STATE.rawMetadata || {};
 
-    $("imageView").innerHTML=
-      `<img src="${STATE.imageURL}" alt="Loaded ComfyUI image">`;
+  const entries=Object.entries(metadata);
 
-  }else{
-
-    $("imageView").innerHTML=
-      `<span style="color:var(--muted)">No image loaded.</span>`;
-  }
+  $("metadataCards").innerHTML=
+    entries.length
+      ? entries.map(([key,value])=>`
+          <div class="meta-entry">
+            <div class="meta-key">${esc(key)}</div>
+            <div class="meta-value">${esc(value)}</div>
+          </div>
+        `).join("")
+      : `<div class="empty">No PNG metadata available.</div>`;
 }
 
 function renderNodes(){
+  if(!STATE.normalized) return;
 
   const query=$("nodeSearch").value.trim().toLowerCase();
 
-  const nodes=STATE.normalized.nodes.filter(n=>{
-
+  const nodes=STATE.normalized.nodes.filter(node=>{
     if(!query) return true;
 
     const hay=[
-      n.id,
-      n.type,
-      n.title,
-      ...n.widgets.map(w=>`${w.name} ${w.value}`)
+      node.id,
+      node.type,
+      node.title,
+      node.pack,
+      ...node.widgets.map(w=>`${w.name} ${w.value}`),
+      ...node.conns.map(c=>`${c.input} ${c.fromId}`)
     ].join(" ").toLowerCase();
 
     return hay.includes(query);
   });
 
-  $("nodeList").innerHTML=nodes.map(n=>{
+  $("nodeCount").textContent=
+    `${nodes.length} of ${STATE.normalized.nodes.length} nodes`;
 
-    const custom=
-      !CORE.has(n.type) || n.pack
-      ? `<span class="custom">CUSTOM</span>`
-      : "";
+  $("nodeList").innerHTML=
+    nodes.length
+      ? nodes.map((node,index)=>{
+          const isCustom=!CORE.has(node.type) || node.pack;
+          const custom=isCustom
+            ? `<span class="custom-tag">CUSTOM</span>`
+            : "";
 
-    return `
-      <div class="node">
-        <div class="node-head">
-          <span class="node-id">#${esc(n.id)}</span>
-          <span class="node-type">${esc(n.type)}</span>
-          ${n.title ? `<span class="badge">${esc(n.title)}</span>`:""}
-          ${custom}
-        </div>
-
-        <div class="node-values">
-
-          ${n.widgets.map(w=>`
-            <div class="value">
-              <b>${esc(w.name)}:</b>
-              ${esc(
+          const values=[
+            ...node.widgets.map(w=>({
+              key:w.name,
+              value:
                 typeof w.value==="object"
                   ? JSON.stringify(w.value)
-                  : w.value
-              )}
-            </div>
-          `).join("")}
+                  : w.value,
+              connection:false
+            })),
+            ...node.conns.map(c=>({
+              key:c.input,
+              value:`← node ${c.fromId}${c.slot!=null ? ` · slot ${c.slot}`:""}`,
+              connection:true
+            }))
+          ];
 
-          ${n.conns.map(c=>`
-            <div class="value">
-              <b>${esc(c.input)}:</b>
-              ← node ${esc(c.fromId)}
-            </div>
-          `).join("")}
+          return `
+            <article class="node" data-node="${esc(node.id)}">
+              <div class="node-head" onclick="toggleNode(this.parentElement)">
+                <span class="node-chevron">›</span>
+                <span class="node-number">#${esc(node.id)}</span>
+                <div class="node-title">
+                  <div class="node-type">${esc(node.type)}</div>
+                  ${
+                    node.title
+                      ? `<div class="node-name">${esc(node.title)}</div>`
+                      : ""
+                  }
+                </div>
+                ${custom}
+              </div>
 
-        </div>
-      </div>
-    `;
+              <div class="node-body">
+                ${
+                  node.pack
+                    ? `<div style="margin-bottom:8px">
+                        <span class="badge yellow">${esc(node.pack)}</span>
+                       </div>`
+                    : ""
+                }
 
-  }).join("") ||
-    `<div style="color:var(--muted)">No nodes match.</div>`;
+                <div class="node-values">
+                  ${
+                    values.length
+                      ? values.map(value=>`
+                          <div class="value ${value.connection ? "connection":""}">
+                            <div class="value-key">${esc(value.key)}</div>
+                            <div class="value-val">${esc(value.value)}</div>
+                          </div>
+                        `).join("")
+                      : `<div class="empty">No widget values or connections.</div>`
+                  }
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("")
+      : `<div class="empty">No nodes match your search.</div>`;
+
+  renderPackSidebar();
 }
 
-/* ---------------------- input loading ------------------------- */
+function renderPackSidebar(){
+  const packs=STATE.analysis.custom;
+
+  if(!packs.length){
+    $("packList").innerHTML="";
+    return;
+  }
+
+  $("packList").innerHTML=`
+    <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+      Custom packs
+    </div>
+    ${packs.map(pack=>`
+      <div class="mini-pack">
+        <b>${esc(pack.pack)}</b>
+        <span>${pack.nodes.length} node type${pack.nodes.length===1?"":"s"}</span>
+      </div>
+    `).join("")}
+  `;
+}
+
+function render(){
+  $("emptyState").style.display="none";
+  $("workspace").style.display="block";
+
+  $("fileName").textContent=STATE.currentName;
+
+  $("fileMeta").textContent=[
+    STATE.file ? sizeText(STATE.file.size) : "Pasted JSON",
+    STATE.normalized.format==="ui" ? "UI workflow" : "API prompt"
+  ].join(" · ");
+
+  $("fileIcon").textContent=
+    STATE.pngInfo ? "▧" : "◇";
+
+  renderOverview();
+  renderImage();
+  renderJSON();
+  renderNodes();
+}
+
+/* ================================================================
+   LOADING
+   ================================================================ */
 
 async function processJSON(json,name="workflow.json",file=null){
-
   clearError();
 
   try{
+    const unwrapped=unwrapJSON(json);
 
-    const normalized=normalize(json);
+    const normalized=normalize(unwrapped);
     const analysis=analyze(normalized);
 
     STATE.file=file;
@@ -1503,30 +2191,43 @@ async function processJSON(json,name="workflow.json",file=null){
     STATE.analysis=analysis;
     STATE.workflow=
       normalized.format==="ui"
-        ? json
-        : normalized.original;
+        ? unwrapped
+        : json.workflow || null;
+
     STATE.prompt=
       json.prompt ||
       json?.workflow?.prompt ||
-      (normalized.format==="api" ? normalized.original : null);
+      (normalized.format==="api"
+        ? normalized.original
+        : null);
 
-    STATE.currentJSON=STATE.workflow;
+    if(!STATE.prompt && normalized.format==="api"){
+      STATE.prompt=normalized.original;
+    }
+
+    STATE.currentJSON=
+      STATE.workflow ||
+      STATE.prompt ||
+      normalized.original;
+
     STATE.pngInfo=null;
 
+    if(STATE.imageURL){
+      URL.revokeObjectURL(STATE.imageURL);
+      STATE.imageURL=null;
+    }
+
     render();
-
-  }catch(e){
-
-    error(e.message || String(e));
+    toast("Workflow inspected");
+  }catch(error){
+    showError(error.message || String(error));
   }
 }
 
 async function processPNG(file){
-
   clearError();
 
   try{
-
     const png=await parsePNG(file);
 
     STATE.file=file;
@@ -1537,90 +2238,76 @@ async function processPNG(file){
       height:png.height
     };
 
+    if(STATE.imageURL){
+      URL.revokeObjectURL(STATE.imageURL);
+    }
+
     STATE.imageURL=URL.createObjectURL(file);
 
     let prompt=null;
     let workflow=null;
 
-    /*
-      ComfyUI normally stores:
-      prompt   -> API prompt JSON
-      workflow -> UI workflow JSON
-    */
-
     for(const [key,value] of Object.entries(png.metadata)){
-
       if(typeof value!=="string") continue;
 
       const lower=key.toLowerCase();
 
-      if(lower==="prompt" || lower==="comfy_prompt"){
-
+      if(
+        lower==="prompt" ||
+        lower==="comfy_prompt"
+      ){
         try{
           prompt=JSON.parse(value);
-        }catch(e){}
+        }catch{}
       }
 
-      if(lower==="workflow" || lower==="comfy_workflow"){
-
+      if(
+        lower==="workflow" ||
+        lower==="comfy_workflow"
+      ){
         try{
           workflow=JSON.parse(value);
-        }catch(e){}
+        }catch{}
       }
     }
 
-    /*
-      Some PNGs contain JSON under nonstandard metadata fields.
-      Try to locate likely workflow JSON automatically.
-    */
-
     if(!workflow){
-
       for(const value of Object.values(png.metadata)){
-
         if(typeof value!=="string") continue;
 
         try{
+          const json=JSON.parse(value);
 
-          const j=JSON.parse(value);
-
-          if(detectFormat(j)==="ui"){
-            workflow=j;
+          if(detectFormat(json)==="ui"){
+            workflow=json;
             break;
           }
-
-        }catch(e){}
+        }catch{}
       }
     }
 
     if(!prompt){
-
       for(const value of Object.values(png.metadata)){
-
         if(typeof value!=="string") continue;
 
         try{
+          const json=JSON.parse(value);
 
-          const j=JSON.parse(value);
-
-          if(detectFormat(j)==="api"){
-            prompt=j;
+          if(detectFormat(json)==="api"){
+            prompt=json;
             break;
           }
-
-        }catch(e){}
+        }catch{}
       }
     }
 
     if(!prompt && !workflow){
-
       throw new Error(
-        "The PNG was read successfully, but no ComfyUI workflow/prompt JSON was found in its metadata."
+        "The PNG was read successfully, but no ComfyUI workflow or prompt JSON was found in its metadata."
       );
     }
 
     const source=workflow || prompt;
-
     const normalized=normalize(source);
     const analysis=analyze(normalized);
 
@@ -1631,61 +2318,23 @@ async function processPNG(file){
     STATE.currentJSON=workflow || prompt;
 
     render();
-
-  }catch(e){
-
-    error(e.message || String(e));
+    toast("PNG metadata inspected");
+  }catch(error){
+    showError(error.message || String(error));
   }
 }
 
-/* -------------------------- events ---------------------------- */
-
-$("drop").onclick=()=>$("file").click();
-
-$("drop").ondragover=e=>{
-  e.preventDefault();
-  $("drop").classList.add("drag");
-};
-
-$("drop").ondragleave=()=>{
-  $("drop").classList.remove("drag");
-};
-
-$("drop").ondrop=e=>{
-
-  e.preventDefault();
-  $("drop").classList.remove("drag");
-
-  const file=e.dataTransfer.files[0];
-
-  if(file) loadFile(file);
-};
-
-$("file").onchange=e=>{
-  const file=e.target.files[0];
-  if(file) loadFile(file);
-};
-
 async function loadFile(file){
+  const type=(file.type || "").toLowerCase();
+  const name=file.name.toLowerCase();
 
-  const type=file.type.toLowerCase();
-
-  if(
-    type==="image/png" ||
-    file.name.toLowerCase().endsWith(".png")
-  ){
-
+  if(type==="image/png" || name.endsWith(".png")){
     await processPNG(file);
     return;
   }
 
-  if(
-    type==="application/json" ||
-    file.name.toLowerCase().endsWith(".json")
-  ){
-
+  if(type==="application/json" || name.endsWith(".json")){
     try{
-
       const text=await file.text();
       const json=JSON.parse(text);
 
@@ -1695,32 +2344,21 @@ async function loadFile(file){
       };
 
       await processJSON(json,file.name,file);
-
-    }catch(e){
-
-      error("Invalid JSON: "+e.message);
+    }catch(error){
+      showError("Invalid JSON: "+error.message);
     }
 
     return;
   }
 
-  error("Please choose a PNG or JSON file.");
+  showError("Please choose a PNG or JSON file.");
 }
 
-$("parsePaste").onclick=()=>{
+/* ================================================================
+   SAMPLE
+   ================================================================ */
 
-  try{
-    processJSON(
-      JSON.parse($("paste").value),
-      "pasted-workflow.json"
-    );
-  }catch(e){
-    error("Invalid JSON: "+e.message);
-  }
-};
-
-$("sample").onclick=()=>{
-
+function loadSample(){
   const sample={
     "3":{
       "class_type":"CheckpointLoaderSimple",
@@ -1728,14 +2366,21 @@ $("sample").onclick=()=>{
         "ckpt_name":"example.safetensors"
       }
     },
-    "6":{
+    "4":{
       "class_type":"CLIPTextEncode",
       "inputs":{
-        "text":"masterpiece, cinematic portrait, detailed face",
+        "text":"cinematic portrait, atmospheric lighting, detailed face, 85mm photography",
         "clip":["3",1]
       }
     },
-    "7":{
+    "5":{
+      "class_type":"CLIPTextEncode",
+      "inputs":{
+        "text":"blurry, distorted, low quality, watermark",
+        "clip":["3",1]
+      }
+    },
+    "6":{
       "class_type":"EmptyLatentImage",
       "inputs":{
         "width":1024,
@@ -1743,53 +2388,161 @@ $("sample").onclick=()=>{
         "batch_size":1
       }
     },
-    "8":{
+    "7":{
       "class_type":"KSampler",
       "inputs":{
-        "seed":123456,
-        "steps":30,
+        "seed":184729384,
+        "steps":28,
         "cfg":7,
         "sampler_name":"euler",
         "scheduler":"normal",
         "denoise":1,
         "model":["3",0],
-        "positive":["6",0],
-        "negative":["6",0],
-        "latent_image":["7",0]
+        "positive":["4",0],
+        "negative":["5",0],
+        "latent_image":["6",0]
+      }
+    },
+    "8":{
+      "class_type":"VAEDecode",
+      "inputs":{
+        "samples":["7",0],
+        "vae":["3",2]
+      }
+    },
+    "9":{
+      "class_type":"SaveImage",
+      "inputs":{
+        "filename_prefix":"NodeLens/sample",
+        "images":["8",0]
       }
     }
   };
 
   $("paste").value=pretty(sample);
   processJSON(sample,"sample-workflow.json");
+}
+
+/* ================================================================
+   EVENTS
+   ================================================================ */
+
+$("chooseFile").onclick=()=>$("file").click();
+$("drop").onclick=()=>$("file").click();
+
+$("drop").addEventListener("keydown",event=>{
+  if(event.key==="Enter" || event.key===" "){
+    event.preventDefault();
+    $("file").click();
+  }
+});
+
+$("drop").ondragover=event=>{
+  event.preventDefault();
+  $("drop").classList.add("drag");
 };
 
-document.querySelectorAll(".tab").forEach(tab=>{
+$("drop").ondragleave=event=>{
+  if(event.currentTarget.contains(event.relatedTarget)) return;
+  $("drop").classList.remove("drag");
+};
 
+$("drop").ondrop=event=>{
+  event.preventDefault();
+  $("drop").classList.remove("drag");
+
+  const file=event.dataTransfer.files[0];
+
+  if(file) loadFile(file);
+};
+
+$("file").onchange=event=>{
+  const file=event.target.files[0];
+
+  if(file){
+    loadFile(file);
+  }
+
+  event.target.value="";
+};
+
+$("parsePaste").onclick=()=>{
+  const value=$("paste").value.trim();
+
+  if(!value){
+    showError("Paste a ComfyUI JSON workflow first.");
+    return;
+  }
+
+  try{
+    processJSON(
+      JSON.parse(value),
+      "pasted-workflow.json"
+    );
+  }catch(error){
+    showError("Invalid JSON: "+error.message);
+  }
+};
+
+$("clearPaste").onclick=()=>{
+  $("paste").value="";
+  clearError();
+};
+
+$("loadSample").onclick=loadSample;
+
+$("newFile").onclick=()=>{
+  clearError();
+
+  if(STATE.imageURL){
+    URL.revokeObjectURL(STATE.imageURL);
+  }
+
+  Object.assign(STATE,{
+    file:null,
+    imageURL:null,
+    rawMetadata:{},
+    prompt:null,
+    workflow:null,
+    normalized:null,
+    analysis:null,
+    pngInfo:null,
+    currentJSON:null,
+    currentName:"workflow.json"
+  });
+
+  $("workspace").style.display="none";
+  $("emptyState").style.display="block";
+  $("paste").value="";
+  $("file").value="";
+  toast("Ready for another file");
+};
+
+document.querySelectorAll(".nav-tab").forEach(tab=>{
   tab.onclick=()=>{
+    document.querySelectorAll(".nav-tab")
+      .forEach(x=>x.classList.remove("active"));
 
-    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab-content")
+      .forEach(x=>x.classList.remove("active"));
 
     tab.classList.add("active");
     $(tab.dataset.tab).classList.add("active");
   };
 });
 
-$("nodeSearch").oninput=renderNodes;
-
 function filteredJSON(text,query){
-
   if(!query) return text;
 
   const lines=text.split("\n");
   const q=query.toLowerCase();
 
-  return lines.filter(line=>line.toLowerCase().includes(q)).join("\n");
+  return lines
+    .filter(line=>line.toLowerCase().includes(q))
+    .join("\n");
 }
 
 $("promptSearch").oninput=()=>{
-
   $("promptJson").textContent=
     filteredJSON(
       pretty(STATE.prompt ?? {}),
@@ -1798,18 +2551,32 @@ $("promptSearch").oninput=()=>{
 };
 
 $("workflowSearch").oninput=()=>{
-
   $("workflowJson").textContent=
     filteredJSON(
-      pretty(STATE.workflow ?? STATE.normalized?.original ?? {}),
+      pretty(
+        STATE.workflow ??
+        STATE.normalized?.original ??
+        {}
+      ),
       $("workflowSearch").value
     );
 };
 
-$("exportPrompt").onclick=()=>{
+$("nodeSearch").oninput=renderNodes;
 
+function toggleNode(node){
+  node.classList.toggle("open");
+}
+
+window.toggleNode=toggleNode;
+
+/* ================================================================
+   EXPORTS
+   ================================================================ */
+
+$("exportPrompt").onclick=()=>{
   if(!STATE.prompt){
-    alert("No prompt JSON is available.");
+    toast("No prompt JSON available");
     return;
   }
 
@@ -1817,46 +2584,38 @@ $("exportPrompt").onclick=()=>{
     "comfyui-prompt.json",
     pretty(STATE.prompt)
   );
+
+  toast("Prompt exported");
 };
 
 $("exportWorkflow").onclick=()=>{
+  const workflow=
+    STATE.workflow ||
+    STATE.normalized?.original;
 
-  if(!STATE.workflow){
-
-    /*
-      If only API format exists, exporting that is still useful.
-    */
-
-    if(STATE.normalized){
-
-      download(
-        "comfyui-workflow.json",
-        pretty(STATE.normalized.original)
-      );
-
-      return;
-    }
-
-    alert("No workflow JSON is available.");
+  if(!workflow){
+    toast("No workflow JSON available");
     return;
   }
 
   download(
     "comfyui-workflow.json",
-    pretty(STATE.workflow)
+    pretty(workflow)
   );
+
+  toast("Workflow exported");
 };
 
 $("exportMetadata").onclick=()=>{
-
   download(
     "comfyui-metadata.json",
-    pretty(STATE.rawMetadata)
+    pretty(STATE.rawMetadata || {})
   );
+
+  toast("Metadata exported");
 };
 
 $("copyCurrent").onclick=()=>{
-
   clipboard(
     pretty(
       STATE.currentJSON ??
@@ -1866,15 +2625,48 @@ $("copyCurrent").onclick=()=>{
   );
 };
 
-/* ------------------------- cleanup ---------------------------- */
+$("copyPrompt").onclick=()=>{
+  clipboard(pretty(STATE.prompt ?? {}));
+};
+
+$("copyWorkflow").onclick=()=>{
+  clipboard(
+    pretty(
+      STATE.workflow ??
+      STATE.normalized?.original ??
+      {}
+    )
+  );
+};
+
+$("copyMetadata").onclick=()=>{
+  clipboard(pretty(STATE.rawMetadata || {}));
+};
+
+/* ================================================================
+   KEYBOARD SHORTCUTS
+   ================================================================ */
+
+document.addEventListener("keydown",event=>{
+  if((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==="o"){
+    event.preventDefault();
+    $("file").click();
+  }
+
+  if(event.key==="Escape"){
+    $("error").style.display="none";
+  }
+});
+
+/* ================================================================
+   CLEANUP
+   ================================================================ */
 
 window.addEventListener("beforeunload",()=>{
-
   if(STATE.imageURL){
     URL.revokeObjectURL(STATE.imageURL);
   }
 });
-
 </script>
 </body>
 </html>
